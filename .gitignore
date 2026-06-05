@@ -1,0 +1,17 @@
+# Entorno virtual
+venv/
+*.venv/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Base de datos local
+*.db
+*.sqlite3
+
+# Archivos de configuración/secretos
+.env
+
+# Archivos de Excel temporales o de prueba
+*.xlsx
