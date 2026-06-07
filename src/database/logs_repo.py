@@ -4,20 +4,27 @@ class LogsRepository:
         self.db = db_connection
 
     def registrar_log(self, nivel, mensaje):
-        """Inserta un nuevo evento de auditoría en la base de datos"""
-        conexion = self.db.obtener_conexion()
-        cursor = conexion.cursor()
-        try:
-            cursor.execute(
-                "INSERT INTO logs_sistema (nivel, mensaje) VALUES (?, ?)",
-                (nivel.upper(), mensaje)
-            )
-            conexion.commit()
-        except Exception as e:
-            # Si falla el guardado en DB, al menos lo escupe en la consola de Linux
-            print(f"❌ [Fallo Crítico Logger] No se pudo guardar en DB: {e}")
-        finally:
-            conexion.close()
+            """Inserta un evento de auditoría en la DB y lo escupe en la consola Linux"""
+            nivel_formateado = nivel.upper()
+            
+            # --- MEJORA: El print en vivo para la consola ---
+            # Dependiendo de la gravedad, le puedes poner un emoji para que salte a la vista
+            emoji = "ℹ️" if nivel_formateado == "INFO" else "⚠️" if nivel_formateado == "WARNING" else "❌"
+            print(f"{emoji} [{nivel_formateado}] {mensaje}")
+            
+            # --- El guardado de siempre en la DB ---
+            conexion = self.db.obtener_conexion()
+            cursor = conexion.cursor()
+            try:
+                cursor.execute(
+                    "INSERT INTO logs_sistema (nivel, mensaje) VALUES (?, ?)",
+                    (nivel_formateado, mensaje)
+                )
+                conexion.commit()
+            except Exception as e:
+                print(f"💥 [Fallo Crítico Logger] No se pudo guardar en DB: {e}")
+            finally:
+                conexion.close()
 
     def obtener_ultimos_logs(self, limite=50):
             """Devuelve los últimos N logs ordenados del más reciente al más viejo"""
