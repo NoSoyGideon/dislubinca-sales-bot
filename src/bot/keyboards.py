@@ -16,6 +16,16 @@ class BotKeyboards:
     CONFIRMAR = "✅ Confirmar y Guardar"
     CANCELAR = "❌ Cancelar / Corregir"
 
+    # PLAN_DIA_UDVD = "📋 Plan del Día - UDVD"
+    # PLAN_DIA_CXC = "📋 Plan del Día - Cuentas x cobrar"
+    # PLAN_DIA_VISITAS = "📋 Plan del Día - Visitas"
+    
+    # CIERRE_NOCHE_UDVD = "📋 Cierre de Noche - UDVD"
+    # CIERRE_NOCHE_CXC = "📋 Cierre de Noche - Cuentas x cobrar"
+    # CIERRE_NOCHE_VISITAS = "📋 Cierre de Noche - Visitas"
+    
+    # COBRANZA_DOLARES = "💵 Cobranza en Dólares"
+    # COBRA
     
     SI = "✅ Sí"
     NO = "❌ No"
@@ -106,7 +116,32 @@ class SupervisorKeyboards:
     # --- SUBMENÚ INGESTIÓN MANUAL (NIVEL 2) ---
     CARGA_INDIVIDUAL = "📝 Reporte Manual Individual"
     CARGA_RAFAGA_SUP = "⚡️ Reporte Manual Ráfaga"
+# Constantes para Tipos de Reportes
+    TIPO_PLAN_DIA = "📋 Plan del Día"
+    TIPO_CIERRE_NOCHE = "🌙 Cierre de Noche"
+    TIPO_COBRANZA = "💵 Reporte de Cobranza"
 
+    # Botones de Reintento
+    REINTENTAR = "🔄 Volver a Intentar"
+
+    @classmethod
+    def obtener_teclado_tipos_reporte(cls) -> ReplyKeyboardMarkup:
+        """Teclado para seleccionar el tipo de reporte manual"""
+        botones = [
+            [KeyboardButton(cls.TIPO_PLAN_DIA), KeyboardButton(cls.TIPO_CIERRE_NOCHE)],
+            [KeyboardButton(cls.TIPO_COBRANZA)],
+            [KeyboardButton(cls.VOLVER_MENU)]
+        ]
+        return ReplyKeyboardMarkup(botones, resize_keyboard=True, one_time_keyboard=True)
+
+    @classmethod
+    def obtener_teclado_reintento(cls) -> ReplyKeyboardMarkup:
+        """Teclado que se muestra en caso de un error en el formato de datos"""
+        botones = [
+            [KeyboardButton(cls.REINTENTAR)],
+            [KeyboardButton(cls.VOLVER_MENU)]
+        ]
+        return ReplyKeyboardMarkup(botones, resize_keyboard=True, one_time_keyboard=True)
     @classmethod
     def obtener_menu_principal(cls) -> ReplyKeyboardMarkup:
         botones = [

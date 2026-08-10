@@ -36,7 +36,21 @@ orquestador = OrquestadorDatos(
 )
 parser_ia = IAParser()
 
-ESTADO_MONITOREO_VENDEDOR ,ESTADO_CARGA_MASIVA,ESTADO_SI_NO,ESTADO_REPORTE_RAFAGA,ESTADO_CONFIRMACION_REPORTE_SUP= range(20, 25)
+(
+    ESTADO_MONITOREO_VENDEDOR,
+    ESTADO_CARGA_MASIVA,
+    ESTADO_SI_NO,
+    ESTADO_REPORTE_RAFAGA,
+    ESTADO_CONFIRMACION_REPORTE_SUP,
+    ESTADO_REPORTE_RUTA_SUP,
+    ESTADO_SELECCIONAR_TIPO_REPORTE_SUP,
+    ESTADO_PROCESAR_DATOS_REPORTE_SUP
+) = range(20, 28)
+
+
+CANTIDAD_VALORES_REQUERIDOS = 3
+
+
 # ========================================================
 # 🏠 NAVEGACIÓN Y MENÚS PRINCIPALES
 # ========================================================
@@ -427,6 +441,33 @@ async def seleccionar_avance_ruta_handler(update: Update, context: ContextTypes.
         parse_mode="Markdown"
     )
     return ESTADO_MONITOREO_VENDEDOR
+
+async def seleccionar_reporte_ruta_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    📊 Acciones para 'Avance por Ruta'
+    Muestra el resumen ejecutivo consolidado del mes actual filtrado por ruta.
+    """
+    telegram_id = update.effective_user.id
+    if not usuarios_repo.es_administrador(telegram_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        return ConversationHandler.END
+
+    # Obtener teclado dinámico con rutas activas
+    teclado_rutas = BotKeyboards.obtener_teclado_rutas(conector)
+
+    await update.message.reply_text(
+        "🚚 **SELECCIONA UNA RUTA PARA CARGAR SU REPORTE**\n\n"
+        "Elige la ruta que desea cargar:",
+        reply_markup=teclado_rutas,
+        parse_mode="Markdown"
+    )
+    return ESTADO_REPORTE_RUTA_SUP
+
+
+
+
+
+
 
 async def avence_por_ruta_handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -835,6 +876,205 @@ async def sincronizar_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+def extraer_numeros_reporte(texto: str, cantidad_esperada: int = CANTIDAD_VALORES_REQUERIDOS) -> list[float] | None:
+    """
+    Parsea de forma segura una cadena de texto para extraer exactamente 'cantidad_esperada' de números.
+    Maneja comas decimales, elimina símbolos de moneda y soporta múltiples delimitadores.
+    """
+    if not texto:
+        return None
+
+    # 1. Limpiar símbolos de moneda y texto ruidoso
+    texto_limpio = re.sub(r'[\$]|USD|usd|Bs|bs|pts', '', texto).strip()
+
+    # 2. Dividir prioritariamente por separadores explícitos (-, _, /, ;, pipe | o saltos de línea)
+    # Si no existen delimitadores explícitos, se usa el espacio en blanco.
+    if re.search(r'[-_/;|\n]', texto_limpio):
+        partes = re.split(r'[-_/;|\n]+', texto_limpio)
+    else:
+        partes = texto_limpio.split()
+
+    numeros = []
+    for parte in partes:
+        p = parte.strip()
+        if not p:
+            continue
+        
+        # Normalizar comas a puntos para decimales (ej: "150,50" -> "150.50")
+        p = p.replace(',', '.')
+        
+        # Buscar patrón numérico válido (enteros o flotantes)
+        coincidencia = re.search(r'^\d+(?:\.\d+)?$', p)
+        if coincidencia:
+            numeros.append(float(coincidencia.group()))
+
+    # Verificar que la cantidad extraída sea exactamente la esperada
+    if len(numeros) == cantidad_esperada:
+        return numeros
+    
+    return None
+
+
+async def seleccionar_tipo_reporte_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Paso 2: Guarda la ruta seleccionada y solicita el tipo de reporte.
+    """
+    texto_ruta = update.message.text
+
+    if texto_ruta == SupervisorKeyboards.VOLVER_MENU:
+        return await iniciar_menu_principal(update, context)
+
+    # Extraer el ID entero de la ruta (ej: "Ruta 4" -> 4)
+    coincidencia = re.search(r'\d+', texto_ruta)
+    num_ruta = int(coincidencia.group()) if coincidencia else None
+
+    if num_ruta is None:
+        await update.message.reply_text("⚠️ No se pudo identificar la ruta seleccionada. Inténtalo de nuevo.")
+        return ESTADO_REPORTE_RUTA_SUP
+
+    # Guardar la ruta en user_data
+    context.user_data["ruta_id_manual"] = num_ruta
+
+    await update.message.reply_text(
+        f"🚚 **Ruta {num_ruta} seleccionada.**\n\n"
+        "Elige el tipo de reporte que deseas ingresar:",
+        reply_markup=SupervisorKeyboards.obtener_teclado_tipos_reporte(),
+        parse_mode="Markdown"
+    )
+    return ESTADO_SELECCIONAR_TIPO_REPORTE_SUP
+
+
+async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Paso 3: Guarda el tipo de reporte seleccionado y solicita los 3 números.
+    """
+    tipo_reporte = update.message.text
+
+    if tipo_reporte == SupervisorKeyboards.VOLVER_MENU:
+        return await iniciar_menu_principal(update, context)
+
+    context.user_data["tipo_reporte_manual"] = tipo_reporte
+
+    # Construir instrucciones personalizadas según el tipo de reporte
+    if tipo_reporte == SupervisorKeyboards.TIPO_PLAN_DIA:
+        instrucciones = (
+            "📋 **PLAN DEL DÍA**\n\n"
+            "Por favor, ingresa los **3 valores** planeados en el siguiente orden:\n"
+            "1. UDVD planeadas\n"
+            "2. CxC planeadas\n"
+            "3. Visitas planeadas\n\n"
+            "💡 *Ejemplo:* `150 - 2500 - 12` o `150_2500_12`"
+        )
+    elif tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
+        instrucciones = (
+            "🌙 **CIERRE DE NOCHE**\n\n"
+            "Por favor, ingresa los **3 valores** conseguidos en el siguiente orden:\n"
+            "1. UDVD conseguidas\n"
+            "2. CxC conseguidas\n"
+            "3. Visitas conseguidas\n\n"
+            "💡 *Ejemplo:* `140 - 2300,50 - 10` o `140 / 2300.50 / 10`"
+        )
+    elif tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
+        instrucciones = (
+            "💵 **REPORTE DE COBRANZA**\n\n"
+            "Por favor, ingresa los **3 montos** recaudados en el siguiente orden:\n"
+            "1. Efectivo ($)\n"
+            "2. Zelle / Transferencia ($)\n"
+            "3. Bolívares\n\n"
+            "💡 *Ejemplo:* `$500 - $300.50 - 4500` o `500_300,50_4500`"
+        )
+    else:
+        await update.message.reply_text("⚠️ Tipo de reporte no válido. Por favor selecciona una opción del menú.")
+        return ESTADO_SELECCIONAR_TIPO_REPORTE_SUP
+
+    await update.message.reply_text(
+        instrucciones,
+        reply_markup=ReplyKeyboardRemove(),
+        parse_mode="Markdown"
+    )
+    return ESTADO_PROCESAR_DATOS_REPORTE_SUP
+
+
+async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Paso 4: Valida y procesa los datos ingresados por el usuario.
+    """
+    texto_ingresado = update.message.text
+
+    # Si presiona reintentar desde el teclado de error
+    if texto_ingresado == SupervisorKeyboards.REINTENTAR:
+        # Re-invocar la solicitud del tipo de reporte actual
+        return await pedir_datos_reporte_handler(update, context)
+
+    if texto_ingresado == SupervisorKeyboards.VOLVER_MENU:
+        return await iniciar_menu_principal(update, context)
+
+    # Intentar extraer los 3 números con la función segura
+    valores = extraer_numeros_reporte(texto_ingresado, cantidad_esperada=CANTIDAD_VALORES_REQUERIDOS)
+
+    # Booleano de estado de la operación
+    exito_registro: bool = False
+
+    if valores is None:
+        exito_registro = False
+        await update.message.reply_text(
+            f"❌ **Error en los datos ingresados.**\n\n"
+            f"No pudimos identificar exactamente {CANTIDAD_VALORES_REQUERIDOS} números válidos.\n"
+            "Asegúrate de separar los valores usando guiones (`-`), guiones bajos (`_`), comas o barras (`/`).",
+            reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
+            parse_mode="Markdown"
+        )
+        # Permanece en el mismo estado para capturar el botón de reintento o un nuevo texto
+        return ESTADO_PROCESAR_DATOS_REPORTE_SUP
+
+    # --- ÉXITO EN EL PARSEO ---
+    exito_registro = True
+    ruta_id = context.user_data.get("ruta_id_manual")
+    tipo_reporte = context.user_data.get("tipo_reporte_manual")
+
+    val1, val2, val3 = valores
+
+    if tipo_reporte == SupervisorKeyboards.TIPO_PLAN_DIA:
+        exito_registro = orquestador.procesar_plan_matutino(ruta=ruta_id,meta_udvd=val1,meta_cobranza=val2,meta_activaciones=val3)
+    if tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
+        exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=val1, real_cobranza=val2, real_activaciones=val3,efectivo=0,zelle=0,bs=0,tasa_bcv=0)
+    if tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
+        exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=0, real_cobranza=0, real_activaciones=0,efectivo=val1,zelle=val2,bs=0,tasa_bcv=val3)
+        
+    if not exito_registro:
+        await update.message.reply_text(
+            f"❌ **Error en el procesamiento de los datos**\n\n"
+            f"Ah ocurrido un error inesperado al procesar los datos.\n"
+            "Vuelava a intentarlo o intente mas tarde, si vuelve a fallar comuniquese con el supervisor",
+            reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
+            parse_mode="Markdown"
+        )
+        # Permanece en el mismo estado para capturar el botón de reintento o un nuevo texto
+        return ESTADO_PROCESAR_DATOS_REPORTE_SUP
+
+    # Mensaje de confirmación al usuario
+    await update.message.reply_text(
+        f"✅ **DATOS PROCESADOS CORRECTAMENTE**\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"🚚 **Ruta:** {ruta_id}\n"
+        f"📋 **Reporte:** {tipo_reporte}\n\n"
+        f"🔢 **Valores capturados:**\n"
+        f"• Valor 1: `{val1}`\n"
+        f"• Valor 2: `{val2}`\n"
+        f"• Valor 3: `{val3}`\n\n"
+        f"*(Espacio listo para sincronización de datos)*",
+        reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+        parse_mode="Markdown"
+    )
+
+    # Limpiar datos temporales de la sesión
+    context.user_data.pop("ruta_id_manual", None)
+    context.user_data.pop("tipo_reporte_manual", None)
+
+    return ConversationHandler.END
+
+
+
 admin_conversacion_handler = ConversationHandler(
     entry_points=[
         # Submenú Personal
@@ -859,7 +1099,7 @@ admin_conversacion_handler = ConversationHandler(
 
         
         MessageHandler(filters.Text([SupervisorKeyboards.INGESTION]), iniciar_menu_reportes),
-        MessageHandler(filters.Text([SupervisorKeyboards.CARGA_INDIVIDUAL]), avance_mes_handler),
+        MessageHandler(filters.Text([SupervisorKeyboards.CARGA_INDIVIDUAL]), seleccionar_reporte_ruta_handler),
         MessageHandler(filters.Text([SupervisorKeyboards.CARGA_RAFAGA_SUP]), iniciar_reporte_rafaga_handler),
         # Reutiliza estatus_vendedores_handler
         # MessageHandler(filters.Text([SupervisorKeyboards.CUADRE_COBRANZA, "💰 Cuadre Cobranza"]), cuadre_cobranza_handler),
@@ -887,9 +1127,22 @@ admin_conversacion_handler = ConversationHandler(
         ],
         ESTADO_CONFIRMACION_REPORTE_SUP: [
             MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR, BotKeyboards.NO, BotKeyboards.SI]), confirmacion_guardado_sup_handler)
+        ],
+        ESTADO_REPORTE_RUTA_SUP: [
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, seleccionar_tipo_reporte_handler)
+        ],
+        ESTADO_SELECCIONAR_TIPO_REPORTE_SUP: [
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, pedir_datos_reporte_handler)
+        ],
+        ESTADO_PROCESAR_DATOS_REPORTE_SUP: [
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_datos_reporte_handler)
         ]
     },
     fallbacks=[
         MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal)
-    ]
+    ],
+    
 )
