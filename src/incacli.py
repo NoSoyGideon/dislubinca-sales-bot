@@ -1,3 +1,5 @@
+# admin_cli.py
+
 import sys
 import os
 import time  # <--- Importamos la librería de tiempo de Python
@@ -19,6 +21,7 @@ class AdminCLI:
         print("4. 🪵 Consultar últimos logs de la DB")
         print("5. 🗑️  Borrar TODOS los logs de la DB")
         print("6. 💥 LIMPIEZA DE PRUEBAS: Borrar todos los datos de cobros")
+        print("7. 👑 Cambiar Rango (Vendedor <--> Supervisor) [FÁCIL]") # <-- Nueva opción
         print("0. 🚪 Salir")
         print("================================================")
 
@@ -72,6 +75,80 @@ class AdminCLI:
             conexion.close()
         
         time.sleep(2)  # Pausa antes del menú
+
+    def gestionar_supervisor_facil(self):
+        """Lista usuarios activos/pendientes para alternar su rol de supervisor fácilmente."""
+        conexion = self.db.obtener_conexion()
+        cursor = conexion.cursor()
+        
+        # Traemos solo los usuarios que no estén bloqueados
+        cursor.execute("SELECT telegram_id, nombre_telegram, rol, ruta FROM usuarios WHERE estado != 'BLOQUEADO'")
+        usuarios = cursor.fetchall()
+        
+        if not usuarios:
+            print("\nℹ️ No hay usuarios activos en la base de datos para ascender/degradar.")
+            conexion.close()
+            time.sleep(2)
+            return
+
+        print("\n👑 --- SELECCIÓN RÁPIDA DE RANGOS ---")
+        for i, u in enumerate(usuarios, 1):
+            ruta_str = f"Ruta {u[3]}" if u[3] is not None else "Global"
+            print(f"{i}. 👤 {u[1]} | Rol: [{u[2]}] | Alcance: {ruta_str} | ID: {u[0]}")
+        print("=====================================")
+        
+        seleccion = input("👉 Elige el número del usuario que deseas cambiar (o Enter para cancelar): ").strip()
+        
+        if not seleccion:
+            conexion.close()
+            return
+            
+        try:
+            idx = int(seleccion) - 1
+            if idx < 0 or idx >= len(usuarios):
+                print("\n⚠️ Número fuera de rango.")
+                conexion.close()
+                time.sleep(1.5)
+                return
+        except ValueError:
+            print("\n⚠️ Entrada inválida. Debes poner un número.")
+            conexion.close()
+            time.sleep(1.5)
+            return
+
+        # Cargamos los datos del usuario elegido
+        telegram_id_sel, nombre_sel, rol_actual, ruta_actual = usuarios[idx]
+        
+        # LOGICA DE SWITCHEOTOGGLE
+        if rol_actual == "VENDEDOR":
+            # ASCENSO: Pasa a ser Supervisor (Se le quita la ruta asignada porque es global)
+            cursor.execute(
+                "UPDATE usuarios SET rol = 'SUPERVISOR', ruta = NULL, estado = 'AUTORIZADO' WHERE telegram_id = ?", 
+                (telegram_id_sel,)
+            )
+            print(f"\n🚀 ¡ASCENDIDO! *{nombre_sel}* ahora es SUPERVISOR (Acceso Global).")
+        else:
+            # DEGRADACIÓN: Vuelve a ser Vendedor, por ende OBLIGATORIAMENTE requiere una ruta
+            print(f"\n📉 Quitando rango de supervisor a *{nombre_sel}*...")
+            nueva_ruta = input("🗺️  Asigna el número de ruta para este vendedor (Ej: 10, 15, 17): ").strip()
+            
+            try:
+                ruta_val = int(nueva_ruta)
+            except ValueError:
+                print("\n❌ Error: Un vendedor activo necesita un número de ruta válido. Operación cancelada.")
+                conexion.close()
+                time.sleep(2)
+                return
+                
+            cursor.execute(
+                "UPDATE usuarios SET rol = 'VENDEDOR', ruta = ? WHERE telegram_id = ?", 
+                (ruta_val, telegram_id_sel)
+            )
+            print(f"\n💼 Cambiado con éxito. *{nombre_sel}* ahora es VENDEDOR de la Ruta {ruta_val}.")
+
+        conexion.commit()
+        conexion.close()
+        time.sleep(2.5)
 
     def bloquear_usuario(self):
         telegram_id = input("\n🔢 Ingresa el ID de Telegram a bloquear: ").strip()
@@ -151,6 +228,8 @@ class AdminCLI:
                 self.borrar_logs()
             elif opcion == "6":
                 self.limpiar_datos_prueba()
+            elif opcion == "7":
+                self.gestionar_supervisor_facil() # <-- Enlazamos la función aquí
             elif opcion == "0":
                 print("\n👋 Saliendo del Panel de Control. ¡A tirar código, mi king!")
                 break

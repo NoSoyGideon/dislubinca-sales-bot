@@ -15,3 +15,7 @@ __pycache__/
 
 # Archivos de Excel temporales o de prueba
 *.xlsx
+
+main2.py
+generar_plantillas_test.py
+textito.txt
