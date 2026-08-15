@@ -53,8 +53,8 @@ SuperDislubincaBot/
 ### 1. Clone the repository
 
 ```bash
-git clone [https://github.com/NoSoyGideon/SuperDislubincaBot.git](https://github.com/NoSoyGideon/SuperDislubincaBot.git)
-cd SuperDislubincaBot
+git clone [https://github.com/NoSoyGideon/SuperDislubincaBot.git](https://github.com/NoSoyGideon/dislubinca-sales-bot.git)
+cd dislubinca-sales-bot
 ```
 
 ### 2. Create and activate virtual environment
