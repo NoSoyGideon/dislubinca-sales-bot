@@ -11,6 +11,7 @@
 - 🧠 **Natural Language Processing (Gemini AI):** Interprets unformatted natural language text sent by sales reps (morning sales plans and evening closing reports broken down by foreign currencies, Zelle, cash, and local currency).
 - 📊 **Dynamic Excel Injection & Closing:** Automatically generates and injects daily data into monthly and weekly templates hosted on Dropbox using `openpyxl`.
 - 🗄️ **Robust Data Architecture:** Data persistence managed via SQLite with the Repository Pattern for fast and thread-safe transactions.
+- 🛠️ **CLI Management Panel:** Includes `incacli.py`, an interactive terminal tool for user authorization, route management, role elevation, database log auditing, and test data cleanup.
 - 👥 **Role & Permission Management:** Differentiated command menu and workflows for **Supervisors/Admins** and **Sales Representatives** assigned to specific routes.
 - ⚡ **Resilience & Error Handling:** Built-in safeguards against network drops, Dropbox API rate limits, and strict schema validation for LLM JSON outputs.
 
@@ -34,10 +35,14 @@ SuperDislubincaBot/
 ├── config/             # Environment configuration & global settings
 ├── src/
 │   ├── bot/            # Telegram handlers, keyboards, and flow management
-│   ├── database/       # SQLite Repositories (Reports, Logs, Sales Reps)
+│   ├── database/       # SQLite Repositories & DB Schema initialization
+│   │   ├── connection.py
+│   │   ├── init_db.py  # Script to initialize tables and schema
+│   │   └── ...
 │   └── services/       # Integrations for Gemini AI, Dropbox, and Excel Services
 ├── templates/          # Master Excel workbook templates
-├── main.py             # Entry point of the application
+├── incacli.py          # Interactive Admin CLI tool for user and DB management
+├── main.py             # Main application entry point for Telegram bot
 └── requirements.txt    # Project dependencies
 ```
 
@@ -87,11 +92,40 @@ DROPBOX_APP_SECRET=your_dropbox_app_secret
 DB_PATH=database/disulubinca.db
 ```
 
-### 5. Run the Application
+### 5. Initialize the Database Schema
+
+Before starting the bot for the first time, execute the initialization script to create the necessary SQLite database tables (`usuarios`, `registros_diarios`, `logs`, etc.):
+
+```bash
+python src/database/init_db.py
+```
+
+### 6. Run the Application
 
 ```bash
 python main.py
 ```
+
+---
+
+## ⚙️ Administration & CLI Tool (`incacli.py`)
+
+The repository includes a Command-Line Interface (`incacli.py`) for system administration without needing direct SQLite manipulation.
+
+To launch the management panel:
+
+```bash
+python incacli.py
+```
+
+**Available CLI Options:**
+1. 👥 View all registered users and their status.
+2. 🔑 Authorize / Create a Sales Representative (Assign Route).
+3. 🚫 Ban / Block users.
+4. 🪵 Audit system logs.
+5. 🗑️ Clear all database logs.
+6. 💥 Clean test data (resets sales & collection logs).
+7. 👑 Change User Role (`Sales Rep` ↔ `Supervisor`).
 
 ---
 
