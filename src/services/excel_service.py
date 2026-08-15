@@ -33,7 +33,7 @@ class ExcelService(BaseExcelService):
         anio_tag = str(dt.year)[2:]
         
         archivo_matutino = f"CONTACTO MATUTINO {mes_tag}-{anio_tag}.xlsm"
-        archivo_cobranza = f"REPORTE DIARIO DE COBRANZA {mes_tag}-{anio_tag}.xlsm"
+        archivo_cobranza = f"REPORTE DIARIO DE COBRANZA {mes_tag}-{anio_tag}.xlsx"
         pestana_dia = f"{dias[dt.weekday()]} {dt.strftime('%d-%m')}"
         
         return archivo_matutino, archivo_cobranza, pestana_dia
@@ -128,22 +128,22 @@ class ExcelService(BaseExcelService):
     def _escribir_promesa_dia_previo(self, ws, col: str, metas: dict):
         """Escribe en la hoja del Día Previo en las filas reales: 24 (UDVD), 25 (Visitas) y 26 (CxC)"""
         if "meta_udvd" in metas:
-            ws[f"{col}24"] = float(metas.get("meta_udvd", 0.0))
+            ws[f"{col}{ContactoMatutinoMap.FILA_PREVIO_UDVD}"] = float(metas.get("meta_udvd", 0.0))
         if "meta_activaciones" in metas:
-            ws[f"{col}25"] = int(metas.get("meta_activaciones", 0))
+            ws[f"{col}{ContactoMatutinoMap.FILA_PREVIO_VISITAS}"] = int(metas.get("meta_activaciones", 0))
         if "meta_cxc" in metas:
-            ws[f"{col}26"] = float(metas.get("meta_cxc", 0.0))
-        print(f"  📌 Promesa inyectada en Día Previo ({ws.title}) -> Col {col} | Filas 24, 25, 26")
+            ws[f"{col}{ContactoMatutinoMap.FILA_PREVIO_CXC}"] = float(metas.get("meta_cxc", 0.0))
+        print(f"  📌 Promesa inyectada en Día Previo ({ws.title}) -> Col {col} | Filas {ContactoMatutinoMap.FILA_PREVIO_UDVD}, {ContactoMatutinoMap.FILA_PREVIO_VISITAS}, {ContactoMatutinoMap.FILA_PREVIO_CXC}")
 
     def _escribir_meta_dia_actual(self, ws, col: str, metas: dict):
         """Escribe en la hoja del Día Actual en las filas reales: 11 (UDVD), 14 (Visitas) y 17 (CxC)"""
         if "meta_udvd" in metas:
-            ws[f"{col}11"] = float(metas.get("meta_udvd", 0.0))
+            ws[f"{col}{ContactoMatutinoMap.FILA_META_UDVD}"] = float(metas.get("meta_udvd", 0.0))
         if "meta_activaciones" in metas:
-            ws[f"{col}14"] = int(metas.get("meta_activaciones", 0))
+            ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"] = int(metas.get("meta_activaciones", 0))
         if "meta_cxc" in metas:
-            ws[f"{col}17"] = float(metas.get("meta_cxc", 0.0))
-        print(f"  🎯 Meta del Día inyectada en Día Actual ({ws.title}) -> Col {col} | Filas 11, 14, 17")
+            ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"] = float(metas.get("meta_cxc", 0.0))
+        print(f"  🎯 Meta del Día inyectada en Día Actual ({ws.title}) -> Col {col} | Filas {ContactoMatutinoMap.FILA_META_UDVD}, {ContactoMatutinoMap.FILA_META_VISITAS}, {ContactoMatutinoMap.FILA_META_CXC}")
 
     def inyectar_plan_matutino_doble(self, ruta: int, fecha_target: str, metas: dict) -> bool:
         """
@@ -158,7 +158,7 @@ class ExcelService(BaseExcelService):
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
-        mapeo_columnas = {10: "E", 15: "F", 17: "G", 21: "H", 30: "I", 32: "J", 39: "K"}
+        mapeo_columnas = ContactoMatutinoMap.COLUMNAS_RUTAS
         col = mapeo_columnas.get(ruta)
 
         if not col:
@@ -230,13 +230,13 @@ class ExcelService(BaseExcelService):
             ws = wb[pestana_target]
 
             if "real_udvd" in datos_cierre:
-                ws[f"{col}12"] = float(datos_cierre.get("real_udvd", 0.0))
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_UDVD}"] = float(datos_cierre.get("real_udvd", 0.0))
             if "real_activaciones" in datos_cierre:
-                ws[f"{col}15"] = int(datos_cierre.get("real_activaciones", 0))
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"] = int(datos_cierre.get("real_activaciones", 0))
             if "real_cobranza" in datos_cierre:
-                ws[f"{col}18"] = float(datos_cierre.get("real_cobranza", 0.0))
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"] = float(datos_cierre.get("real_cobranza", 0.0))
 
-            print(f"🌙 [ExcelService] Cierre nocturno inyectado en {pestana_target} -> Col {col} | UDVD: Fila 12, Visitas: Fila 15, CXC: Fila 18")
+            print(f"🌙 [ExcelService] Cierre nocturno inyectado en {pestana_target} -> Col {col} | UDVD: Fila {ContactoMatutinoMap.FILA_REAL_UDVD}, Visitas: Fila {ContactoMatutinoMap.FILA_REAL_VISITAS}, CXC: Fila {ContactoMatutinoMap.FILA_REAL_CXC}")
 
             wb.save(ruta_local)
             wb.close()
@@ -264,7 +264,7 @@ class ExcelService(BaseExcelService):
             print(f"ℹ️ [ExcelService] Fecha {fecha_str} es Viernes/Fin de semana. Se omite el relevo de cobranza.")
             return True
 
-        mapa_columnas_dias = {0: "R", 1: "S", 2: "T", 3: "U"}
+        mapa_columnas_dias = ContactoMatutinoMap.COLUMNAS_DIAS_COBRANZA
         col_dia = mapa_columnas_dias.get(dia_semana)
 
         archivo_matutino, _, pestana_target = self._calcular_nombres(fecha_str)
@@ -332,17 +332,17 @@ class ExcelService(BaseExcelService):
             wb_lectura = openpyxl.load_workbook(ruta_local, data_only=True)
             ws = wb_lectura[pestana_target]
             
-            mapeo_columnas = {10: "E", 15: "F", 17: "G", 21: "H", 30: "I", 32: "J", 39: "K"}
+            mapeo_columnas = ContactoMatutinoMap.COLUMNAS_RUTAS
             col = mapeo_columnas.get(ruta)
             
             if col:
                 data = {
-                    "meta_udvd": ws[f"{col}11"].value or 0.0,
-                    "real_udvd": ws[f"{col}12"].value or 0.0,
-                    "meta_activaciones": ws[f"{col}14"].value or 0,
-                    "real_activaciones": ws[f"{col}15"].value or 0,
-                    "meta_cxc": ws[f"{col}17"].value or 0.0,
-                    "real_cxc": ws[f"{col}18"].value or 0.0
+                    "meta_udvd": ws[f"{col}{ContactoMatutinoMap.FILA_META_UDVD}"].value or 0.0,
+                    "real_udvd": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_UDVD}"].value or 0.0,
+                    "meta_activaciones": ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"].value or 0,
+                    "real_activaciones": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"].value or 0,
+                    "meta_cxc": ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"].value or 0.0,
+                    "real_cxc": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"].value or 0.0
                 }
                 wb_lectura.close()
                 return data
@@ -396,7 +396,7 @@ class ExcelService(BaseExcelService):
                 pestana_target="CONTROL",
                 ruta_local=ruta_local
             )
-            ws = wb["CONTROL"]
+            ws = wb[ContactoMatutinoMap.PESTANA_CONTROL]
 
             print(f"✏️ [ExcelService] Inyectando cuotas en pestaña CONTROL...")
 
@@ -443,7 +443,7 @@ class ExcelService(BaseExcelService):
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
-        HOJAS_PROTEGIDAS = ["CONTROL", "PLANTILLA"]
+        HOJAS_PROTEGIDAS = [ContactoMatutinoMap.PESTANA_CONTROL, ContactoMatutinoMap.PESTANA_PLANTILLA]
 
         try:
             wb_init = self._garantizar_archivo_y_pestana(
@@ -491,7 +491,7 @@ class ExcelService(BaseExcelService):
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
-        mapeo_columnas = {10: "E", 15: "F", 17: "G", 21: "H", 30: "I", 32: "J", 39: "K"}
+        mapeo_columnas = ContactoMatutinoMap.COLUMNAS_RUTAS
         col = mapeo_columnas.get(ruta)
 
         if not col:
@@ -512,16 +512,16 @@ class ExcelService(BaseExcelService):
 
             # --- LIMPIAR PLAN MATUTINO (Filas 11, 14, 17) ---
             if modo_clean in ["MATUTINO", "COMPLETO"]:
-                ws[f"{col}11"] = 0.0  # UDVD Meta
-                ws[f"{col}14"] = 0    # Visitas Meta
-                ws[f"{col}17"] = 0.0  # CxC Meta
+                ws[f"{col}{ContactoMatutinoMap.FILA_META_UDVD}"] = 0.0  # UDVD Meta
+                ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"] = 0    # Visitas Meta
+                ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"] = 0.0  # CxC Meta
                 print(f"🧹 [ExcelService] Plan Matutino limpiado en Excel para Ruta {ruta} ({pestana_target})")
 
             # --- LIMPIAR CIERRE NOCTURNO (Filas 12, 15, 18) ---
             if modo_clean in ["NOCTURNO", "COMPLETO"]:
-                ws[f"{col}12"] = 0.0  # UDVD Real
-                ws[f"{col}15"] = 0    # Visitas Real
-                ws[f"{col}18"] = 0.0  # CxC Real
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_UDVD}"] = 0.0  # UDVD Real
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"] = 0    # Visitas Real
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"] = 0.0  # CxC Real
                 print(f"🧹 [ExcelService] Cierre Nocturno limpiado en Excel para Ruta {ruta} ({pestana_target})")
 
             wb.save(ruta_local)
@@ -612,7 +612,7 @@ class ExcelService(BaseExcelService):
             # FASE 2: ESCANEO DE PESTAÑAS DIARIAS (IGNORA CONTROL Y PLANTILLA)
             # ----------------------------------------------------
             HOJAS_IGNORADAS = ["CONTROL", "PLANTILLA"]
-            mapeo_columnas = {10: "E", 15: "F", 17: "G", 21: "H", 30: "I", 32: "J", 39: "K"}
+            mapeo_columnas = ContactoMatutinoMap.COLUMNAS_RUTAS
 
             pestañas_operativas = [
                 s for s in wb.sheetnames 
@@ -626,7 +626,7 @@ class ExcelService(BaseExcelService):
 
                 # Intentar parsear fecha desde la celda G4 o usar el nombre de la pestaña
                 fecha_pestana = None
-                g4_val = ws["G4"].value
+                g4_val = ws[ContactoMatutinoMap.CELDA_FECHA_G4].value
                 if g4_val:
                     try:
                         if isinstance(g4_val, datetime):
@@ -645,12 +645,12 @@ class ExcelService(BaseExcelService):
 
                 # Extraer datos por columna de ruta
                 for ruta_id, col in mapeo_columnas.items():
-                    m_u = ws[f"{col}11"].value or 0.0
-                    r_u = ws[f"{col}12"].value or 0.0
-                    m_v = ws[f"{col}14"].value or 0
-                    r_v = ws[f"{col}15"].value or 0
-                    m_c = ws[f"{col}17"].value or 0.0
-                    r_c = ws[f"{col}18"].value or 0.0
+                    m_u = ws[f"{col}{ContactoMatutinoMap.FILA_META_UDVD}"].value or 0.0
+                    r_u = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_UDVD}"].value or 0.0
+                    m_v = ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"].value or 0
+                    r_v = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"].value or 0
+                    m_c = ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"].value or 0.0
+                    r_c = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"].value or 0.0
 
                     # Si hay algún dato cargado en las celdas
                     if any([m_u, r_u, m_v, r_v, m_c, r_c]):
@@ -712,7 +712,7 @@ class ExcelService(BaseExcelService):
         
         nombre_mes = self._obtener_nombre_mes_capitalizado(dt.month)
         anio_dos_digitos = str(dt.year)[2:]
-        nombre_archivo = f"REPORTE DIARIO DE COBRANZA {nombre_mes}-{anio_dos_digitos}.xlsm"
+        nombre_archivo = f"REPORTE DIARIO DE COBRANZA {nombre_mes}-{anio_dos_digitos}.xlsx"
         
         ruta_local = os.path.join(self.tmp_dir, nombre_archivo)
         ruta_dropbox = f"{MapCD.MAIN_FOLDER}{nombre_archivo}"
@@ -770,7 +770,6 @@ class ExcelService(BaseExcelService):
         Inyecta la cobranza desglosada (Efectivo, Zelle, Bolívares) en el día
         y semana correspondientes dentro del Reporte Diario de Cobranza.
         """
-        from config.excel_map_config import CobranzaDiariaMap as MapCD
         
         dt = datetime.strptime(fecha_str, "%Y-%m-%d")
         dia_semana = dt.weekday()

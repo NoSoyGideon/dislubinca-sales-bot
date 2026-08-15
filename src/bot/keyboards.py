@@ -174,7 +174,8 @@ class SupervisorKeyboards:
     def obtener_sub_personal(cls) -> ReplyKeyboardMarkup:
         botones = [
             [KeyboardButton(cls.VER_SOLICITUDES)],
-            [KeyboardButton(cls.ESTATUS_VENDEDORES), KeyboardButton(cls.LISTA_ACTIVOS)],
+            # KeyboardButton(cls.ESTATUS_VENDEDORES),
+            [KeyboardButton(cls.LISTA_ACTIVOS)],
             [KeyboardButton(cls.VOLVER_MENU)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)

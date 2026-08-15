@@ -26,19 +26,19 @@ class ContactoMatutinoMap:
     }
 
     # Filas de Plan Matutino (Objetivos del Día Actual)
-    FILA_META_UDVD = 11
-    FILA_META_VISITAS = 14
-    FILA_META_CXC = 17
+    FILA_META_UDVD = 16
+    FILA_META_VISITAS = 19
+    FILA_META_CXC = 22
 
     # Filas de Cierre Nocturno (Logros Reales)
-    FILA_REAL_UDVD = 12
-    FILA_REAL_VISITAS = 15
-    FILA_REAL_CXC = 18
+    FILA_REAL_UDVD = 17
+    FILA_REAL_VISITAS = 20
+    FILA_REAL_CXC = 23
 
     # Filas del Promesa / Objetivo del Día Previo (Hoja Anterior)
-    FILA_PREVIO_UDVD = 24
-    FILA_PREVIO_VISITAS = 25
-    FILA_PREVIO_CXC = 26
+    FILA_PREVIO_UDVD = 29
+    FILA_PREVIO_VISITAS = 30
+    FILA_PREVIO_CXC = 31
 
     # 💵 Matriz de Relevo de Cobranza Semanal
     COLUMNA_BUSQUEDA_RUTA = "P"
@@ -71,7 +71,7 @@ class CobranzaDiariaMap:
     Cualquier cambio de celdas o filas en la plantilla de Excel
     se modifica ÚNICAMENTE en esta clase.
     """
-    PLANTILLA_BASE_NOMBRE = "REPORTE_DIARIO_DE_COBRANZA_BASE.xlsm"
+    PLANTILLA_BASE_NOMBRE = "REPORTE_DIARIO_DE_COBRANZA_BASE.xlsx"
     MAIN_FOLDER = "/REPORTE DIARIO DE COBRANZA/"
     PESTANA_PLANTILLA_BASE = "Semana I"
 
@@ -80,19 +80,19 @@ class CobranzaDiariaMap:
         10: "D",
         15: "E",
         17: "F",
-        21: "G",
-        30: "H",
-        32: "I",
-        39: "J"
+        30: "G",
+        32: "H",
+        39: "I",
+        21: "J"
     }
 
     # Desplazamiento geométrico de celdas por día (0=Lunes, 1=Martes, 2=Miércoles, 3=Jueves, 4=Viernes)
     CONFIG_DIAS = {
-        0: {"encabezado": "C3", "efectivo": 6, "zelle": 7, "bs": 8},
-        1: {"encabezado": "C15", "efectivo": 18, "zelle": 19, "bs": 20},
-        2: {"encabezado": "C27", "efectivo": 30, "zelle": 31, "bs": 32},
-        3: {"encabezado": "C38", "efectivo": 41, "zelle": 42, "bs": 43},
-        4: {"encabezado": "C49", "efectivo": 52, "zelle": 53, "bs": 54},
+        0: {"encabezado": "C3", "efectivo": 7, "zelle": 8, "bs": 9},
+        1: {"encabezado": "C15", "efectivo": 19, "zelle": 20, "bs": 21},
+        2: {"encabezado": "C27", "efectivo": 31, "zelle": 32, "bs": 33},
+        3: {"encabezado": "C38", "efectivo": 42, "zelle": 43, "bs": 44},
+        4: {"encabezado": "C49", "efectivo": 53, "zelle": 54, "bs": 55},
     }
 
     NOMBRES_DIAS_TEXTO = {

@@ -328,7 +328,7 @@ async def confirmacion_guardado_handler(update: Update, context: ContextTypes.DE
     fecha_eval = context.user_data.get("fecha_evaluar") or datetime.now().strftime("%Y-%m-%d")
     es_matutino = context.user_data.get("es_matutino", False)
 
-    if decision == BotKeyboards.CONFIRMAR:
+    if decision == BotKeyboards.CONFIRMAR or decision == BotKeyboards.SI:
         await update.message.reply_text(
             "⏳ *Guardando en la base de datos local y sincronizando en Dropbox...*",
             parse_mode="Markdown"
@@ -419,7 +419,7 @@ reporte_conversacion_handler = ConversationHandler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, acumular_mensaje_rafaga_handler)
         ],
         ESTADO_CONFIRMACION_REPORTE: [
-            MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR]), confirmacion_guardado_handler)
+            MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.SI, BotKeyboards.NO, BotKeyboards.CANCELAR]), confirmacion_guardado_handler)
         ]
     },
     fallbacks=[CommandHandler("cancelar", cancelar_flujo_handler)]
