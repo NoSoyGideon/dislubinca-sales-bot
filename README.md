@@ -40,9 +40,9 @@ SuperDislubincaBot/
 │   │   ├── init_db.py  # Script to initialize tables and schema
 │   │   └── ...
 │   └── services/       # Integrations for Gemini AI, Dropbox, and Excel Services
+│   ├── incacli.py          # Interactive Admin CLI tool for user and DB management
+│   ├── main.py             # Main application entry point for Telegram bot
 ├── templates/          # Master Excel workbook templates
-├── incacli.py          # Interactive Admin CLI tool for user and DB management
-├── main.py             # Main application entry point for Telegram bot
 └── requirements.txt    # Project dependencies
 ```
 
