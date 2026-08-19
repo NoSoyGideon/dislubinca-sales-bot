@@ -579,17 +579,36 @@ async def procesar_carga_masiva_cuotas_handle(update: Update, context: ContextTy
 
     cuotas_texto = update.message.text
     resultado_ia = parser_ia.parsear_cuotas(cuotas_texto)
-    mes_str = datetime.now().strftime("%Y-%m-%d")
-    print(f"Resultado del parser IA: {resultado_ia}")  # Debugging line
-    # Validar y procesar el texto recibido
-    
-    if resultado_ia is None or "error" in resultado_ia:
+
+    # 1. Validar si la respuesta de la IA fue exitosa y trae cuotas
+    if not resultado_ia or not resultado_ia.get("exito", False) or not resultado_ia.get("lote_cuotas"):
+        error_detalle = resultado_ia.get("error", "No se detectaron cuotas válidas") if resultado_ia else "Sin respuesta del servidor"
+
+        # Manejo diferido según la causa del error
+        if "API Key" in error_detalle or "genai.Client" in error_detalle:
+            mensaje_usuario = (
+                "🚨 **Servicio de IA no disponible.**\n"
+                "Hay un problema de configuración con el servicio Gemini. Contacta al soporte técnico."
+            )
+        elif "JSON" in error_detalle:
+            mensaje_usuario = (
+                "⚠️ **No pude interpretar las cuotas ingresadas.**\n\n"
+                "Asegúrate de indicar las rutas y metas claramente (Ejemplo: `r10: 2000 udvd, 5000 cxc, 10 visitas`).\n\n"
+                "💡 *Ingresa el texto nuevamente o envía `/cancelar` para salir.*"
+            )
+        else:
+            mensaje_usuario = (
+                "⚠️ **No se encontraron cuotas para procesar.**\n\n"
+                "Verifica que las rutas y montos estén escritos correctamente e reintenta."
+            )
+
         await update.message.reply_text(
-            "⚠️ **Parece que Hubo un error en la interpretación de las cuotas.**\n\n"
-            "Por favor, espare unos segundo y prueba mas tarde.",
+            mensaje_usuario,
             parse_mode="Markdown"
         )
         return ESTADO_CARGA_MASIVA
+    mes_str = datetime.now().strftime("%Y-%m-%d")
+    
     cuotas_dicc = resultado_ia.get("lote_cuotas", resultado_ia)
     resultado = orquestador.establecer_cuotas_mensuales(fecha_str=mes_str,lote_cuotas=cuotas_dicc,usuarios_repo=usuarios_repo)
     exito, mensaje = resultado
@@ -695,18 +714,38 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
     await update.message.reply_text("⏳ *DislubinBot esta procesando reporte ... Por favor espera.*", parse_mode="Markdown")
     
     resultado_ia = parser_ia.parsear_texto_libre(reporte_texto)
-    
 
+    # 1. Validar si la llamada a la IA fue exitosa o devolvió error
+    if not resultado_ia or not resultado_ia.get("exito", False):
+        # Extraemos el mensaje de error técnico
+        error_detalle = resultado_ia.get("error", "No se recibió respuesta válida del analizador.") if resultado_ia else "Error desconocido al procesar el texto."
+        
+        # Evaluamos qué tipo de falla ocurrió para dar mejor retroalimentación
+        if "API Key" in error_detalle or "genai.Client" in error_detalle:
+            mensaje_usuario = (
+                "🚨 **Error del Sistema:**\n"
+                "El servicio de Inteligencia Artificial no está configurado correctamente (API Key ausente o inválida).\n\n"
+                "Por favor, notifica al administrador del sistema."
+            )
+        elif "JSON" in error_detalle:
+            mensaje_usuario = (
+                "⚠️ **No pude interpretar la estructura de tu mensaje.**\n\n"
+                "Asegúrate de enviar un texto con el formato habitual (incluyendo montos, unidades o cobranza claros).\n\n"
+                "💡 *Envía `/cancelar` para reintentar desde el menú.*"
+            )
+        else:
+            mensaje_usuario = (
+                f"⚠️ **Hubo un problema procesando tu reporte:**\n"
+                f"`{error_detalle}`\n\n"
+                "Porfavor intente mas tarde."
+            )
 
-    # Validar y procesar el texto recibido
-    if not resultado_ia or "error" in resultado_ia:
         await update.message.reply_text(
-            "⚠️ **No pude interpretar los datos del reporte.**\n\n"
-            "Asegúrate de copiar el reporte completo o envía `/cancelar` para reintentar.",
-            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            mensaje_usuario,
+            reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
             parse_mode="Markdown"
         )
-        return ConversationHandler.END
+        return ESTADO_REPORTE_RAFAGA
 
     context.user_data["payload_ia_sup"] = resultado_ia
     tipo_intencion = str(resultado_ia.get("tipo_intencion", "")).upper()
@@ -810,7 +849,7 @@ async def confirmacion_guardado_sup_handler(update: Update, context: ContextType
                 f"✅ **¡REPORTE REGISTRADO EXITOSAMENTE!**\n\n"
                 f"📍 Ruta {ruta_id} | 📅 {fecha_eval}\n"
                 f"Datos actualizados en SQLite y respaldados en la nube.",
-                reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+                reply_markup=SupervisorKeyboards.obtener_volver_repetir(),
                 parse_mode="Markdown"
             )
         else:
@@ -828,7 +867,7 @@ async def confirmacion_guardado_sup_handler(update: Update, context: ContextType
         )
 
     context.user_data.clear()
-    return ConversationHandler.END
+    return ESTADO_CONFIRMACION_REPORTE_SUP
 
 
 async def pedir_confirmacion_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -1063,7 +1102,7 @@ async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.D
         f"• Valor 2: `{val2}`\n"
         f"• Valor 3: `{val3}`\n\n"
         f"*(Espacio listo para sincronización de datos)*",
-        reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+        reply_markup=SupervisorKeyboards.obtener_volver_repetir(),
         parse_mode="Markdown"
     )
 
@@ -1071,7 +1110,7 @@ async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.D
     context.user_data.pop("ruta_id_manual", None)
     context.user_data.pop("tipo_reporte_manual", None)
 
-    return ConversationHandler.END
+    return ESTADO_PROCESAR_DATOS_REPORTE_SUP
 
 
 
@@ -1123,10 +1162,13 @@ admin_conversacion_handler = ConversationHandler(
         # Manejo de respuesta inesperada  
         ],
         ESTADO_REPORTE_RAFAGA: [
-            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler)
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), iniciar_reporte_rafaga_handler),
         ],
         ESTADO_CONFIRMACION_REPORTE_SUP: [
-            MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR, BotKeyboards.NO, BotKeyboards.SI]), confirmacion_guardado_sup_handler)
+            MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR, BotKeyboards.NO, BotKeyboards.SI]), confirmacion_guardado_sup_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
+            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler)
         ],
         ESTADO_REPORTE_RUTA_SUP: [
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
@@ -1138,7 +1180,9 @@ admin_conversacion_handler = ConversationHandler(
         ],
         ESTADO_PROCESAR_DATOS_REPORTE_SUP: [
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_datos_reporte_handler)
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_datos_reporte_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler),
+     
         ]
     },
     fallbacks=[

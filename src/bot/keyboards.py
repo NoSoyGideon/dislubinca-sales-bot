@@ -95,7 +95,7 @@ class SupervisorKeyboards:
     
     # --- BOTÓN DE RETORNO ---
     VOLVER_MENU = "⬅️ Volver al Menú Principal"
-
+    REINTENTAR = "🔄 Volver a Intentar"
     # --- SUBMENÚ MONITOREO (NIVEL 2) ---
     AVANCE_MES = "📈 Avance General del Mes"
     AVANCE_MES_SUPERVISOR = "📊 Avance por Supervisor"
@@ -116,6 +116,7 @@ class SupervisorKeyboards:
     # --- SUBMENÚ INGESTIÓN MANUAL (NIVEL 2) ---
     CARGA_INDIVIDUAL = "📝 Reporte Manual Individual"
     CARGA_RAFAGA_SUP = "⚡️ Reporte Manual Ráfaga"
+    CARGAR_OTRO_REPORTE = "📋 Cargar otro reporte"
 # Constantes para Tipos de Reportes
     TIPO_PLAN_DIA = "📋 Plan del Día"
     TIPO_CIERRE_NOCHE = "🌙 Cierre de Noche"
@@ -192,4 +193,10 @@ class SupervisorKeyboards:
     def obtener_volver_menu(cls) -> ReplyKeyboardMarkup:
         """Teclado simple para volver al menú principal"""
         botones = [[KeyboardButton(cls.VOLVER_MENU)]]
+        return ReplyKeyboardMarkup(botones, resize_keyboard=True)
+    
+    @classmethod
+    def obtener_volver_repetir(cls) -> ReplyKeyboardMarkup:
+        
+        botones =[[KeyboardButton(cls.VOLVER_MENU)],[KeyboardButton(cls.CARGAR_OTRO_REPORTE)]]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)

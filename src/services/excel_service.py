@@ -124,8 +124,13 @@ class ExcelService(BaseExcelService):
         dt = datetime.strptime(fecha_str, "%Y-%m-%d")
         dias_atras = 3 if dt.weekday() == 0 else 1
         return (dt - timedelta(days=dias_atras)).strftime("%Y-%m-%d")
+    
+    def _calcular_fecha_siguiente(self,fecha_str:str) -> str:
+        dt = datetime.strptime(fecha_str,"%Y-%m-%d")
+        diasExtra = 3 if dt.weekday() == 4 else 1
+        return (dt+timedelta(days=diasExtra)).strftime("%Y-%m-%d")
 
-    def _escribir_promesa_dia_previo(self, ws, col: str, metas: dict):
+    def _escribir_meta_dia_actual(self, ws, col: str, metas: dict):
         """Escribe en la hoja del Día Previo en las filas reales: 24 (UDVD), 25 (Visitas) y 26 (CxC)"""
         if "meta_udvd" in metas:
             ws[f"{col}{ContactoMatutinoMap.FILA_PREVIO_UDVD}"] = float(metas.get("meta_udvd", 0.0))
@@ -135,7 +140,7 @@ class ExcelService(BaseExcelService):
             ws[f"{col}{ContactoMatutinoMap.FILA_PREVIO_CXC}"] = float(metas.get("meta_cxc", 0.0))
         print(f"  📌 Promesa inyectada en Día Previo ({ws.title}) -> Col {col} | Filas {ContactoMatutinoMap.FILA_PREVIO_UDVD}, {ContactoMatutinoMap.FILA_PREVIO_VISITAS}, {ContactoMatutinoMap.FILA_PREVIO_CXC}")
 
-    def _escribir_meta_dia_actual(self, ws, col: str, metas: dict):
+    def _escribir_meta_dia_siguiente(self, ws, col: str, metas: dict):
         """Escribe en la hoja del Día Actual en las filas reales: 11 (UDVD), 14 (Visitas) y 17 (CxC)"""
         if "meta_udvd" in metas:
             ws[f"{col}{ContactoMatutinoMap.FILA_META_UDVD}"] = float(metas.get("meta_udvd", 0.0))
@@ -152,9 +157,11 @@ class ExcelService(BaseExcelService):
         inyecta las metas y realiza una sola subida limpia a Dropbox.
         """
         archivo_matutino, _, pestana_actual = self._calcular_nombres(fecha_target)
-        fecha_previa = self._calcular_fecha_previa(fecha_target)
-        _, _, pestana_previa = self._calcular_nombres(fecha_previa)
 
+        fecha_siguiente = self._calcular_fecha_siguiente(fecha_target)
+
+        _, _, pestana_siguiente = self._calcular_nombres(fecha_siguiente)
+        
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
@@ -175,12 +182,12 @@ class ExcelService(BaseExcelService):
             )
 
             # 2. Aseguramos pestaña PREVIA e inyectamos
-            ws_previo = self._asegurar_pestana_desde_plantilla(wb, pestana_previa, fecha_previa)
-            self._escribir_promesa_dia_previo(ws_previo, col, metas)
-
-            # 3. Aseguramos pestaña ACTUAL e inyectamos
             ws_actual = self._asegurar_pestana_desde_plantilla(wb, pestana_actual, fecha_target)
             self._escribir_meta_dia_actual(ws_actual, col, metas)
+
+            # 3. Aseguramos pestaña ACTUAL e inyectamos
+            ws_siguiente = self._asegurar_pestana_desde_plantilla(wb, pestana_siguiente, fecha_siguiente)
+            self._escribir_meta_dia_siguiente(ws_siguiente, col, metas)
 
             # 4. Guardamos localmente y subimos a Dropbox
             wb.save(ruta_local)
@@ -208,7 +215,9 @@ class ExcelService(BaseExcelService):
         - Fila 15: Visitas Efectivas
         - Fila 18: CXC Lograda ($)
         """
-        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha)
+        fecha_siguiente = self._calcular_fecha_siguiente(fecha)
+        
+        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha_siguiente)
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
@@ -225,7 +234,7 @@ class ExcelService(BaseExcelService):
                 plantilla_base_nombre="CONTACTO_MATUTINO_BASE.xlsm",
                 pestana_target=pestana_target,
                 ruta_local=ruta_local,
-                fecha_str=fecha
+                fecha_str=fecha_siguiente
             )
             ws = wb[pestana_target]
 
@@ -259,7 +268,8 @@ class ExcelService(BaseExcelService):
         """
         dt = datetime.strptime(fecha_str, "%Y-%m-%d")
         dia_semana = dt.weekday()
-
+        fecha_siguiente = self._calcular_fecha_siguiente(fecha_str)
+        
         if dia_semana >= 4:
             print(f"ℹ️ [ExcelService] Fecha {fecha_str} es Viernes/Fin de semana. Se omite el relevo de cobranza.")
             return True
@@ -267,7 +277,7 @@ class ExcelService(BaseExcelService):
         mapa_columnas_dias = ContactoMatutinoMap.COLUMNAS_DIAS_COBRANZA
         col_dia = mapa_columnas_dias.get(dia_semana)
 
-        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha_str)
+        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha_siguiente)
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
@@ -277,7 +287,7 @@ class ExcelService(BaseExcelService):
                 plantilla_base_nombre="CONTACTO_MATUTINO_BASE.xlsm",
                 pestana_target=pestana_target,
                 ruta_local=ruta_local,
-                fecha_str=fecha_str
+                fecha_str=fecha_siguiente
             )
             ws = wb[pestana_target]
 
@@ -316,7 +326,9 @@ class ExcelService(BaseExcelService):
 
     def extraer_operacion_diaria_vendedor(self, ruta: int, fecha: str) -> dict:
         """[SR] Lee registros garantizando primero la existencia del archivo/pestaña."""
-        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha)
+        fecha_siguiente = self._calcular_fecha_siguiente(fecha)
+        archivo_matutino, _, _ = self._calcular_nombres(fecha)
+        _, _, pestana_target = self._calcular_nombres(fecha_siguiente)
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         
         try:
@@ -487,7 +499,9 @@ class ExcelService(BaseExcelService):
         [LIMPIEZA FÍSICA EN EXCEL]
         Resetea a 0 las celdas específicas de una ruta sin borrar filas ni alterar fórmulas.
         """
-        archivo_matutino, _, pestana_target = self._calcular_nombres(fecha_str)
+        fecha_siguiente = self._calcular_fecha_siguiente(fecha_str)
+        archivo_matutino, _, _ = self._calcular_nombres(fecha_str)
+        _, _, pestana_target = self._calcular_nombres(fecha_siguiente)
         ruta_local = os.path.join(self.tmp_dir, archivo_matutino)
         ruta_dropbox = f"{self.MAIN_FOLDER}{archivo_matutino}"
 
@@ -626,22 +640,25 @@ class ExcelService(BaseExcelService):
 
                 # Intentar parsear fecha desde la celda G4 o usar el nombre de la pestaña
                 fecha_pestana = None
+                fecha_previa = None
                 g4_val = ws[ContactoMatutinoMap.CELDA_FECHA_G4].value
                 if g4_val:
                     try:
                         if isinstance(g4_val, datetime):
                             fecha_pestana = g4_val.strftime("%Y-%m-%d")
+                            fecha_previa = self._calcular_fecha_previa(fecha_pestana)
                         else:
                             dt = datetime.strptime(str(g4_val).strip(), "%d/%m/%Y")
                             fecha_pestana = dt.strftime("%Y-%m-%d")
+                            fecha_previa = self._calcular_fecha_previa(fecha_pestana)
                     except ValueError:
                         pass
 
-                if not fecha_pestana:
+                if not fecha_previa:
                     continue
 
-                if fecha_pestana not in resumen_escaneo["operaciones_diarias"]:
-                    resumen_escaneo["operaciones_diarias"][fecha_pestana] = {}
+                if fecha_previa not in resumen_escaneo["operaciones_diarias"]:
+                    resumen_escaneo["operaciones_diarias"][fecha_previa] = {}
 
                 # Extraer datos por columna de ruta
                 for ruta_id, col in mapeo_columnas.items():
@@ -654,7 +671,7 @@ class ExcelService(BaseExcelService):
 
                     # Si hay algún dato cargado en las celdas
                     if any([m_u, r_u, m_v, r_v, m_c, r_c]):
-                        resumen_escaneo["operaciones_diarias"][fecha_pestana][ruta_id] = {
+                        resumen_escaneo["operaciones_diarias"][fecha_previa][ruta_id] = {
                             "meta_udvd": float(m_u if isinstance(m_u, (int, float)) else 0.0),
                             "real_udvd": float(r_u if isinstance(r_u, (int, float)) else 0.0),
                             "meta_activaciones": int(m_v if isinstance(m_v, (int, float)) else 0),

@@ -118,10 +118,30 @@ async def procesar_texto_whatsapp_handler(update: Update, context: ContextTypes.
 
     resultado_ia = parser_ia.parsear_texto_libre(texto_para_ia)
 
-    if not resultado_ia or "error" in resultado_ia:
+    # 1. Validar si la respuesta de la IA fue exitosa
+    if not resultado_ia or not resultado_ia.get("exito", False):
+        error_detalle = resultado_ia.get("error", "Error desconocido") if resultado_ia else "Sin respuesta"
+
+        # Manejo diferenciado según la causa del error
+        if "API Key" in error_detalle or "genai.Client" in error_detalle:
+            mensaje_usuario = (
+                "🚨 **Servicio no disponible momentáneamente.**\n\n"
+                "Estamos experimentando problemas con el analizador. Por favor, notifica a tu supervisor."
+            )
+        elif "JSON" in error_detalle:
+            mensaje_usuario = (
+                "⚠️ **No pude entender los datos de tu reporte.**\n\n"
+                "Asegúrate de incluir la información clara (ej: UDVD, cobranza o métodos de pago).\n\n"
+                "💡 *Intenta enviar el texto nuevamente o escribe `/cancelar` para reintentar.*"
+            )
+        else:
+            mensaje_usuario = (
+                "⚠️ **Ocurrió un detalle al procesar tu mensaje.**\n\n"
+                "Por favor, revisa el texto enviado o usa `/cancelar` para volver a empezar."
+            )
+
         await update.message.reply_text(
-            "⚠️ **No pude interpretar los datos del reporte.**\n\n"
-            "Asegúrate de copiar el reporte completo o envía `/cancelar` para reintentar.",
+            mensaje_usuario,
             reply_markup=BotKeyboards.obtener_teclado_vendedor(),
             parse_mode="Markdown"
         )
@@ -265,13 +285,32 @@ async def procesar_rafaga_acumulada(update: Update, context: ContextTypes.DEFAUL
     texto_para_ia = f"{contexto_intencion}{texto_unificado}"
 
     await update.message.reply_text("⏳ *Procesando mensaje...*", parse_mode="Markdown")
-
     resultado_ia = parser_ia.parsear_texto_libre(texto_para_ia)
 
-    if not resultado_ia or "error" in resultado_ia:
+    # 1. Validar si la respuesta de la IA fue exitosa
+    if not resultado_ia or not resultado_ia.get("exito", False):
+        error_detalle = resultado_ia.get("error", "Error desconocido") if resultado_ia else "Sin respuesta"
+
+        # Manejo diferenciado según la causa del error
+        if "API Key" in error_detalle or "genai.Client" in error_detalle:
+            mensaje_usuario = (
+                "🚨 **Servicio no disponible momentáneamente.**\n\n"
+                "Estamos experimentando problemas con el analizador. Por favor, notifica a tu supervisor."
+            )
+        elif "JSON" in error_detalle:
+            mensaje_usuario = (
+                "⚠️ **No pude entender los datos de tu reporte.**\n\n"
+                "Asegúrate de incluir la información clara (ej: UDVD, cobranza o métodos de pago).\n\n"
+                "💡 *Intenta enviar el texto nuevamente o escribe `/cancelar` para reintentar.*"
+            )
+        else:
+            mensaje_usuario = (
+                "⚠️ **Ocurrió un detalle al procesar tu mensaje.**\n\n"
+                "Por favor, revisa el texto enviado o usa `/cancelar` para volver a empezar."
+            )
+
         await update.message.reply_text(
-            "⚠️ **No pude interpretar los datos acumulados.**\n\n"
-            "Asegúrate de enviar mensajes con datos válidos o intenta de nuevo.",
+            mensaje_usuario,
             reply_markup=BotKeyboards.obtener_teclado_vendedor(),
             parse_mode="Markdown"
         )

@@ -204,8 +204,9 @@ Tu objetivo es analizar textos libres que contengan las cuotas/metas asignadas a
     def parsear_texto_libre(self, texto_vendedor: str) -> dict:
         """Envía el texto a Gemini Flash y devuelve un diccionario normalizado para reporte diario"""
         if not self.client:
-            self.logger.registrar_log("ERROR", "No se pudo inicializar genai.Client. Falta la API Key.")
-            return None
+            msg_err = "No se pudo inicializar genai.Client. Falta la API Key."
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err}
 
         self.logger.registrar_log("INFO", "Iniciando petición a Gemini Flash para parsear reporte...")
 
@@ -226,27 +227,33 @@ Tu objetivo es analizar textos libres que contengan las cuotas/metas asignadas a
             texto_respuesta = respuesta.text.strip()
             datos_json = json.loads(texto_respuesta)
 
-            return self._normalizar_respuesta(datos_json)
+            resultado = self._normalizar_respuesta(datos_json)
+            resultado["exito"] = True
+            return resultado
 
         except json.JSONDecodeError as json_err:
-            self.logger.registrar_log("ERROR", f"Gemini no devolvió un JSON limpio: {json_err}. Respuesta cruda: {texto_respuesta}")
-            return None
+            msg_err = f"Gemini no devolvió un JSON válido: {json_err}. Respuesta cruda: {texto_respuesta}"
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err, "respuesta_cruda": texto_respuesta}
+            
         except Exception as e:
-            self.logger.registrar_log("ERROR", f"Fallo crítico en la comunicación con Gemini: {e}")
-            return None
-        
+            msg_err = f"Fallo crítico en la comunicación con Gemini: {e}"
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err}
+
     def parsear_cuotas(self, texto_supervisor: str) -> dict:
         """Envía el texto del supervisor a Gemini Flash y devuelve un diccionario normalizado de cuotas por lote"""
         if not self.client:
-            self.logger.registrar_log("ERROR", "No se pudo inicializar genai.Client. Falta la API Key.")
-            return None
+            msg_err = "No se pudo inicializar genai.Client. Falta la API Key."
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err, "lote_cuotas": {}}
 
         self.logger.registrar_log("INFO", "Iniciando petición a Gemini Flash para parsear cuotas masivas...")
 
         texto_respuesta = ""
         try:
             config = types.GenerateContentConfig(
-                system_instruction=self.system_instruction_supervisor, # 👈 Usa la instrucción de supervisor
+                system_instruction=self.system_instruction_supervisor,
                 temperature=0.1,
                 response_mime_type="application/json"
             )
@@ -267,11 +274,16 @@ Tu objetivo es analizar textos libres que contengan las cuotas/metas asignadas a
                 "INFO",
                 f"Parseo masivo de cuotas exitoso. Total de rutas procesadas: {len(datos_normalizados.get('lote_cuotas', {}))}."
             )
+            datos_normalizados["exito"] = True
             return datos_normalizados
 
         except json.JSONDecodeError as json_err:
-            self.logger.registrar_log("ERROR", f"Gemini no devolvió un JSON limpio en cuotas: {json_err}. Respuesta cruda: {texto_respuesta}")
-            return None
+            msg_err = f"Gemini no devolvió un JSON limpio en cuotas: {json_err}. Respuesta cruda: {texto_respuesta}"
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err, "lote_cuotas": {}, "respuesta_cruda": texto_respuesta}
+            
         except Exception as e:
-            self.logger.registrar_log("ERROR", f"Fallo crítico en la comunicación con Gemini al parsear cuotas: {e}")
-            return None
+            msg_err = f"Fallo crítico en la comunicación con Gemini al parsear cuotas: {e}"
+            self.logger.registrar_log("ERROR", msg_err)
+            return {"exito": False, "error": msg_err, "lote_cuotas": {}}
+        
