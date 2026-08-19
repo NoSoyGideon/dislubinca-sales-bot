@@ -59,6 +59,9 @@ def inicializar_base_de_datos():
             meta_udvd REAL DEFAULT 0.0,
             real_udvd REAL DEFAULT 0.0,
             
+
+            
+            
             -- Bloque Activaciones
             meta_activaciones INTEGER DEFAULT 0,
             real_activaciones INTEGER DEFAULT 0,
@@ -72,6 +75,14 @@ def inicializar_base_de_datos():
             zelle_usd REAL DEFAULT 0.0,
             bs_cambiados_usd REAL DEFAULT 0.0,
             tasa_bcv REAL DEFAULT 0.0,                 -- Tasa del día oficial de la cobranza
+            --
+            -- Bloque Venta GRUPO_AMIGO
+            meta_amigo REAL DEFAULT 0.0,
+            real_amigo REAL DEFAULT 0.0,
+            
+            -- Bloque Venta GRUPO_CELTA
+            meta_celta REAL DEFAULT 0.0,
+            real_celta REAL DEFAULT 0.0,
             
             timestamp_registro DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (ruta_id) REFERENCES usuarios(ruta) ON DELETE CASCADE,
