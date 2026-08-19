@@ -12,6 +12,7 @@ class ContactoMatutinoMap:
     
     # Celda donde se inyecta la fecha en la hoja del día
     CELDA_FECHA_G4 = "G4"
+    CELDA_DIAS_TRANSCURRIDOS = "D4"
 
     # Mapeo de Columnas por Ruta (Pestaña Diaria)
     COLUMNAS_RUTAS = {
@@ -29,16 +30,20 @@ class ContactoMatutinoMap:
     FILA_META_UDVD = 16
     FILA_META_VISITAS = 19
     FILA_META_CXC = 22
+    FILA_META_AMIGO = 25
+    FILA_META_CELTA = 28
 
     # Filas de Cierre Nocturno (Logros Reales)
     FILA_REAL_UDVD = 17
     FILA_REAL_VISITAS = 20
     FILA_REAL_CXC = 23
+    FILA_REAL_AMIGO = 26
+    FILA_REAL_CELTA = 29
 
     # Filas del Promesa / Objetivo del Día Previo (Hoja Anterior)
-    FILA_PREVIO_UDVD = 29
-    FILA_PREVIO_VISITAS = 30
-    FILA_PREVIO_CXC = 31
+    FILA_PREVIO_UDVD = 33
+    FILA_PREVIO_VISITAS = 34
+    FILA_PREVIO_CXC = 35
 
     # 💵 Matriz de Relevo de Cobranza Semanal
     COLUMNA_BUSQUEDA_RUTA = "P"
@@ -46,10 +51,10 @@ class ContactoMatutinoMap:
     FILA_FIN_RUTAS = 20
 
     COLUMNAS_DIAS_COBRANZA = {
-        0: "R",  # Lunes
-        1: "S",  # Martes
-        2: "T",  # Miércoles
-        3: "U"   # Jueves
+        0: "S",  # Lunes
+        1: "T",  # Martes
+        2: "U",  # Miércoles
+        3: "V"   # Jueves
     }
 
     # 📊 Pestaña CONTROL (Cuotas Mensuales)

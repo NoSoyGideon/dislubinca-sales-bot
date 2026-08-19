@@ -48,7 +48,7 @@ parser_ia = IAParser()
 ) = range(20, 28)
 
 
-CANTIDAD_VALORES_REQUERIDOS = 3
+CANTIDAD_VALORES_REQUERIDOS = 5
 
 
 # ========================================================
@@ -828,6 +828,8 @@ async def confirmacion_guardado_sup_handler(update: Update, context: ContextType
                 meta_udvd=float(payload.get("meta_udvd", 0)),
                 meta_cobranza=float(payload.get("meta_cxc", 0.0)),
                 meta_activaciones=int(payload.get("meta_activaciones", 0)),
+                meta_amigo=float(payload.get("meta_amigo", 0.0)),
+                meta_celta=float(payload.get("meta_celta", 0.0)),
                 fecha_str=fecha_eval
             )
         else:
@@ -841,6 +843,8 @@ async def confirmacion_guardado_sup_handler(update: Update, context: ContextType
                 zelle=float(payload.get("zelle_usd", 0.0)),
                 bs=float(payload.get("bs_cambiados_usd", 0.0)),
                 tasa_bcv=float(payload.get("tasa_bcv", 0.0)),
+                real_amigo=float(payload.get("real_amigo", 0.0)),
+                real_celta=float(payload.get("real_celta", 0.0)),
                 fecha_str=fecha_eval
             )
 
@@ -1039,7 +1043,7 @@ async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.D
     Paso 4: Valida y procesa los datos ingresados por el usuario.
     """
     texto_ingresado = update.message.text
-
+    exito_registro: bool = False
     # Si presiona reintentar desde el teclado de error
     if texto_ingresado == SupervisorKeyboards.REINTENTAR:
         # Re-invocar la solicitud del tipo de reporte actual
@@ -1047,39 +1051,56 @@ async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.D
 
     if texto_ingresado == SupervisorKeyboards.VOLVER_MENU:
         return await iniciar_menu_principal(update, context)
-
-    # Intentar extraer los 3 números con la función segura
-    valores = extraer_numeros_reporte(texto_ingresado, cantidad_esperada=CANTIDAD_VALORES_REQUERIDOS)
-
-    # Booleano de estado de la operación
-    exito_registro: bool = False
-
-    if valores is None:
-        exito_registro = False
-        await update.message.reply_text(
-            f"❌ **Error en los datos ingresados.**\n\n"
-            f"No pudimos identificar exactamente {CANTIDAD_VALORES_REQUERIDOS} números válidos.\n"
-            "Asegúrate de separar los valores usando guiones (`-`), guiones bajos (`_`), comas o barras (`/`).",
-            reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
-            parse_mode="Markdown"
-        )
-        # Permanece en el mismo estado para capturar el botón de reintento o un nuevo texto
-        return ESTADO_PROCESAR_DATOS_REPORTE_SUP
-
-    # --- ÉXITO EN EL PARSEO ---
-    exito_registro = True
     ruta_id = context.user_data.get("ruta_id_manual")
     tipo_reporte = context.user_data.get("tipo_reporte_manual")
-
-    val1, val2, val3 = valores
-
-    if tipo_reporte == SupervisorKeyboards.TIPO_PLAN_DIA:
-        exito_registro = orquestador.procesar_plan_matutino(ruta=ruta_id,meta_udvd=val1,meta_cobranza=val2,meta_activaciones=val3)
-    if tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
-        exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=val1, real_cobranza=val2, real_activaciones=val3,efectivo=0,zelle=0,bs=0,tasa_bcv=0)
+    
     if tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
-        exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=0, real_cobranza=0, real_activaciones=0,efectivo=val1,zelle=val2,bs=0,tasa_bcv=val3)
+        valores = extraer_numeros_reporte(texto_ingresado, cantidad_esperada=3)
         
+        if valores is None:
+            exito_registro = False
+            await update.message.reply_text(
+                f"❌ **Error en los datos ingresados.**\n\n"
+                f"No pudimos identificar exactamente {CANTIDAD_VALORES_REQUERIDOS} números válidos.\n"
+                "Asegúrate de separar los valores usando guiones (`-`), guiones bajos (`_`), comas o barras (`/`).",
+                reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
+                parse_mode="Markdown"
+            )
+            # Permanece en el mismo estado para capturar el botón de reintento o un nuevo texto
+            return ESTADO_PROCESAR_DATOS_REPORTE_SUP
+
+        val1,val2,val3 = valores
+        if tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
+            exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=0, real_cobranza=0, real_activaciones=0,efectivo=val1,zelle=val2,bs=val3,real_amigo=0,real_celta=0,tasa_bcv=0)
+    else:
+
+    # Intentar extraer los 3 números con la función segura
+        valores = extraer_numeros_reporte(texto_ingresado, cantidad_esperada=CANTIDAD_VALORES_REQUERIDOS)
+
+        # Booleano de estado de la operació
+        if valores is None:
+            exito_registro = False
+            await update.message.reply_text(
+                f"❌ **Error en los datos ingresados.**\n\n"
+                f"No pudimos identificar exactamente {CANTIDAD_VALORES_REQUERIDOS} números válidos.\n"
+                "Asegúrate de separar los valores usando guiones (`-`), guiones bajos (`_`), comas o barras (`/`).",
+                reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
+                parse_mode="Markdown"
+            )
+            # Permanece en el mismo estado para capturar el botón de reintento o un nuevo texto
+            return ESTADO_PROCESAR_DATOS_REPORTE_SUP
+        
+
+        # --- ÉXITO EN EL PARSEO ---
+
+
+        val1, val2, val3 ,val4,val5= valores
+
+        if tipo_reporte == SupervisorKeyboards.TIPO_PLAN_DIA:
+            exito_registro = orquestador.procesar_plan_matutino(ruta=ruta_id,meta_udvd=val1,meta_cobranza=val2,meta_activaciones=val3,meta_amigo=val4,meta_celta=val5)
+        if tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
+            exito_registro = orquestador.procesar_cierre_nocturno(ruta=ruta_id,real_udvd=val1, real_cobranza=val2, real_activaciones=val3,efectivo=0,zelle=0,bs=0,tasa_bcv=0,real_amigo=val4,real_celta=val5)
+
     if not exito_registro:
         await update.message.reply_text(
             f"❌ **Error en el procesamiento de los datos**\n\n"
@@ -1097,10 +1118,6 @@ async def procesar_datos_reporte_handler(update: Update, context: ContextTypes.D
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🚚 **Ruta:** {ruta_id}\n"
         f"📋 **Reporte:** {tipo_reporte}\n\n"
-        f"🔢 **Valores capturados:**\n"
-        f"• Valor 1: `{val1}`\n"
-        f"• Valor 2: `{val2}`\n"
-        f"• Valor 3: `{val3}`\n\n"
         f"*(Espacio listo para sincronización de datos)*",
         reply_markup=SupervisorKeyboards.obtener_volver_repetir(),
         parse_mode="Markdown"

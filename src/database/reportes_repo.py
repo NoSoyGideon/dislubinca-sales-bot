@@ -31,20 +31,22 @@ class ReportesRepository:
     #       🌅 MÓDULO 1: CONTROL DE OPERACIONES DIARIAS
     # ========================================================
 
-    def registrar_o_actualizar_plan_matutino(self, ruta, meta_udvd=0, meta_cobranza=0.0, meta_activaciones=0, fecha_especifica=None):
+    def registrar_o_actualizar_plan_matutino(self, ruta, meta_udvd=0, meta_cobranza=0.0, meta_activaciones=0, meta_amigo=0.0, meta_celta=0.0, fecha_especifica=None):
         """Registra o ingresa las metas del día para una ruta"""
         fecha_op = self._normalizar_fecha(fecha_especifica)
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
         try:
             cursor.execute("""
-                INSERT INTO operaciones_diarias (fecha, ruta_id, meta_udvd, meta_cxc, meta_activaciones)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO operaciones_diarias (fecha, ruta_id, meta_udvd, meta_cxc, meta_activaciones, meta_amigo, meta_celta)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(fecha, ruta_id) DO UPDATE SET
                     meta_udvd = CASE WHEN excluded.meta_udvd IS NOT NULL AND excluded.meta_udvd > 0 THEN excluded.meta_udvd ELSE operaciones_diarias.meta_udvd END,
                     meta_cxc = CASE WHEN excluded.meta_cxc IS NOT NULL AND excluded.meta_cxc > 0 THEN excluded.meta_cxc ELSE operaciones_diarias.meta_cxc END,
-                    meta_activaciones = CASE WHEN excluded.meta_activaciones IS NOT NULL AND excluded.meta_activaciones > 0 THEN excluded.meta_activaciones ELSE operaciones_diarias.meta_activaciones END
-            """, (fecha_op, ruta, float(meta_udvd or 0), float(meta_cobranza or 0.0), int(meta_activaciones or 0)))
+                    meta_activaciones = CASE WHEN excluded.meta_activaciones IS NOT NULL AND excluded.meta_activaciones > 0 THEN excluded.meta_activaciones ELSE operaciones_diarias.meta_activaciones END,
+                    meta_amigo = CASE WHEN excluded.meta_amigo IS NOT NULL AND excluded.meta_amigo > 0 THEN excluded.meta_amigo ELSE operaciones_diarias.meta_amigo END,
+                    meta_celta = CASE WHEN excluded.meta_celta IS NOT NULL AND excluded.meta_celta > 0 THEN excluded.meta_celta ELSE operaciones_diarias.meta_celta END
+            """, (fecha_op, ruta, float(meta_udvd or 0), float(meta_cobranza or 0.0), int(meta_activaciones or 0), float(meta_amigo or 0.0), float(meta_celta or 0.0)))
             conexion.commit()
             return True
         except Exception as e:
@@ -53,7 +55,7 @@ class ReportesRepository:
         finally:
             conexion.close()
 
-    def registrar_o_actualizar_cierre_nocturno(self, ruta, real_udvd=0, real_cobranza=0.0, real_activaciones=0, efectivo=0.0, zelle=0.0, bs=0.0, tasa_bcv=0.0, fecha_especifica=None):
+    def registrar_o_actualizar_cierre_nocturno(self, ruta, real_udvd=0, real_cobranza=0.0, real_activaciones=0, efectivo=0.0, zelle=0.0, bs=0.0, tasa_bcv=0.0, real_amigo=0.0, real_celta=0.0, fecha_especifica=None):
         """Registra o actualiza los logros reales y desglose físico de caja en la noche"""
         fecha_op = self._normalizar_fecha(fecha_especifica)
         conexion = self.db.obtener_conexion()
@@ -62,8 +64,9 @@ class ReportesRepository:
             cursor.execute("""
                 INSERT INTO operaciones_diarias (
                     fecha, ruta_id, real_udvd, real_cxc, real_activaciones, 
-                    efectivo_usd, zelle_usd, bs_cambiados_usd, tasa_bcv
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    efectivo_usd, zelle_usd, bs_cambiados_usd, tasa_bcv,
+                    real_amigo, real_celta
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(fecha, ruta_id) DO UPDATE SET
                     real_udvd = CASE WHEN excluded.real_udvd IS NOT NULL AND excluded.real_udvd > 0 THEN excluded.real_udvd ELSE operaciones_diarias.real_udvd END,
                     real_cxc = CASE WHEN excluded.real_cxc IS NOT NULL AND excluded.real_cxc > 0 THEN excluded.real_cxc ELSE operaciones_diarias.real_cxc END,
@@ -71,9 +74,11 @@ class ReportesRepository:
                     efectivo_usd = CASE WHEN excluded.efectivo_usd > 0 THEN excluded.efectivo_usd ELSE operaciones_diarias.efectivo_usd END,
                     zelle_usd = CASE WHEN excluded.zelle_usd > 0 THEN excluded.zelle_usd ELSE operaciones_diarias.zelle_usd END,
                     bs_cambiados_usd = CASE WHEN excluded.bs_cambiados_usd > 0 THEN excluded.bs_cambiados_usd ELSE operaciones_diarias.bs_cambiados_usd END,
+                    real_amigo = CASE WHEN excluded.real_amigo IS NOT NULL AND excluded.real_amigo > 0 THEN excluded.real_amigo ELSE operaciones_diarias.real_amigo END,
+                    real_celta = CASE WHEN excluded.real_celta IS NOT NULL AND excluded.real_celta > 0 THEN excluded.real_celta ELSE operaciones_diarias.real_celta END,
                     tasa_bcv = CASE WHEN excluded.tasa_bcv > 0 THEN excluded.tasa_bcv ELSE operaciones_diarias.tasa_bcv END
             """, (fecha_op, ruta, float(real_udvd or 0), float(real_cobranza or 0.0), int(real_activaciones or 0), 
-                  float(efectivo or 0.0), float(zelle or 0.0), float(bs or 0.0), float(tasa_bcv or 0.0)))
+                  float(efectivo or 0.0), float(zelle or 0.0), float(bs or 0.0), float(tasa_bcv or 0.0), float(real_amigo or 0.0), float(real_celta or 0.0)))
             conexion.commit()
             return True
         except Exception as e:
@@ -81,6 +86,11 @@ class ReportesRepository:
             return False
         finally:
             conexion.close()
+
+    # ========================================================
+    #      THIS FUNCTION DOESN'T MAKE ANY SENSES
+    # ========================================================
+
 
     def registrar_cobros_detalle(self, fecha_str, ruta_id, lista_cobros):
         """Registra cada cobro por cliente de forma individual"""
@@ -206,7 +216,7 @@ class ReportesRepository:
         
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
-        campo_real = "real_udvd" if tipo_cuota.upper() == "UDVD" else "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones"
+        campo_real = "real_udvd" if tipo_cuota.upper() == "UDVD" else "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones" 
         
         cursor.execute(f"SELECT SUM({campo_real}) FROM operaciones_diarias WHERE fecha LIKE ?", (f"{periodo_str}%",))
         acumulado = cursor.fetchone()[0]
@@ -240,10 +250,10 @@ class ReportesRepository:
         """Consulta histórica de la sumatoria de objetivos/metas de un día específico"""
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
-        cursor.execute("SELECT SUM(meta_udvd), SUM(meta_cxc), SUM(meta_activaciones) FROM operaciones_diarias WHERE fecha = ?", (fecha_str,))
+        cursor.execute("SELECT SUM(meta_udvd), SUM(meta_cxc), SUM(meta_activaciones), SUM(meta_amigo), SUM(meta_celta) FROM operaciones_diarias WHERE fecha = ?", (fecha_str,))
         r = cursor.fetchone()
         conexion.close()
-        return {"total_meta_udvd": r[0] or 0.0, "total_meta_cxc": r[1] or 0.0, "total_meta_act": r[2] or 0}
+        return {"total_meta_udvd": r[0] or 0.0, "total_meta_cxc": r[1] or 0.0, "total_meta_act": r[2] or 0, "total_meta_amigo": r[3] or 0.0, "total_meta_celta": r[4] or 0.0}
 
     def obtener_total_cobrado_dia(self, fecha_str):
         """Consulta histórica de cobros del día: Sumatoria de lo cobrado real en una fecha"""
@@ -371,6 +381,9 @@ class ReportesRepository:
     #       🛠️ MÓDULO 5: PROCESADOR CENTRAL DEL IA PARSER
     # ========================================================
 
+    # =======================================================
+    #   fHUA, Never did i use this xd
+    
     def procesar_payload_ia(self, payload_json, ruta_fallback=None):
         """
         [MOTOR DE IMPACTO AUTOMÁTICO]
@@ -597,7 +610,8 @@ class ReportesRepository:
                 # Consultar los 3 días de golpe para la ruta
                 cursor.execute("""
                     SELECT fecha, meta_udvd, real_udvd, meta_activaciones, real_activaciones, 
-                        meta_cxc, real_cxc, efectivo_usd, zelle_usd, bs_cambiados_usd
+                        meta_cxc, real_cxc, efectivo_usd, zelle_usd, bs_cambiados_usd,
+                        meta_amigo, real_amigo, meta_celta, real_celta
                     FROM operaciones_diarias 
                     WHERE ruta_id = ? AND fecha IN (?, ?, ?)
                 """, (r_id, fecha_ayer, fecha_hoy, fecha_manana))
@@ -638,7 +652,7 @@ class ReportesRepository:
         cursor.execute("""
             SELECT ruta_id, meta_udvd, real_udvd, 
                    (efectivo_usd + zelle_usd + bs_cambiados_usd) as caja_total,
-                   real_cxc
+                   real_cxc, meta_amigo, real_amigo, meta_celta, real_celta
             FROM operaciones_diarias 
             WHERE fecha = ?
         """, (fecha_evaluar,))

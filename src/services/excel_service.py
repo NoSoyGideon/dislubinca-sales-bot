@@ -148,6 +148,11 @@ class ExcelService(BaseExcelService):
             ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"] = int(metas.get("meta_activaciones", 0))
         if "meta_cxc" in metas:
             ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"] = float(metas.get("meta_cxc", 0.0))
+        if "meta_amigo" in metas:
+            ws[f"{col}{ContactoMatutinoMap.FILA_META_AMIGO}"] = float(metas.get("meta_amigo", 0.0))
+        if "meta_celta" in metas:
+            ws[f"{col}{ContactoMatutinoMap.FILA_META_CELTA}"] = float(metas.get("meta_celta", 0.0))
+        
         print(f"  🎯 Meta del Día inyectada en Día Actual ({ws.title}) -> Col {col} | Filas {ContactoMatutinoMap.FILA_META_UDVD}, {ContactoMatutinoMap.FILA_META_VISITAS}, {ContactoMatutinoMap.FILA_META_CXC}")
 
     def inyectar_plan_matutino_doble(self, ruta: int, fecha_target: str, metas: dict) -> bool:
@@ -214,6 +219,8 @@ class ExcelService(BaseExcelService):
         - Fila 12: UDVD (Unidades Logradas)
         - Fila 15: Visitas Efectivas
         - Fila 18: CXC Lograda ($)
+        - Fila 21: Amigo (Unidades Logradas)
+        - Fila 24: Celta (Unidades Logradas)
         """
         fecha_siguiente = self._calcular_fecha_siguiente(fecha)
         
@@ -244,6 +251,10 @@ class ExcelService(BaseExcelService):
                 ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"] = int(datos_cierre.get("real_activaciones", 0))
             if "real_cobranza" in datos_cierre:
                 ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"] = float(datos_cierre.get("real_cobranza", 0.0))
+            if "real_amigo" in datos_cierre:
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_AMIGO}"] = float(datos_cierre.get("real_amigo", 0.0))
+            if "real_celta" in datos_cierre:
+                ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CELTA}"] = float(datos_cierre.get("real_celta", 0.0))
 
             print(f"🌙 [ExcelService] Cierre nocturno inyectado en {pestana_target} -> Col {col} | UDVD: Fila {ContactoMatutinoMap.FILA_REAL_UDVD}, Visitas: Fila {ContactoMatutinoMap.FILA_REAL_VISITAS}, CXC: Fila {ContactoMatutinoMap.FILA_REAL_CXC}")
 
@@ -354,7 +365,11 @@ class ExcelService(BaseExcelService):
                     "meta_activaciones": ws[f"{col}{ContactoMatutinoMap.FILA_META_VISITAS}"].value or 0,
                     "real_activaciones": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"].value or 0,
                     "meta_cxc": ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"].value or 0.0,
-                    "real_cxc": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"].value or 0.0
+                    "real_cxc": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"].value or 0.0,
+                    "meta_amigo": ws[f"{col}{ContactoMatutinoMap.FILA_META_AMIGO}"].value or 0.0,
+                    "real_amigo": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_AMIGO}"].value or 0.0,
+                    "meta_celta": ws[f"{col}{ContactoMatutinoMap.FILA_META_CELTA}"].value or 0.0,
+                    "real_celta": ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CELTA}"].value or 0.0
                 }
                 wb_lectura.close()
                 return data
@@ -668,7 +683,10 @@ class ExcelService(BaseExcelService):
                     r_v = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_VISITAS}"].value or 0
                     m_c = ws[f"{col}{ContactoMatutinoMap.FILA_META_CXC}"].value or 0.0
                     r_c = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CXC}"].value or 0.0
-
+                    m_a = ws[f"{col}{ContactoMatutinoMap.FILA_META_AMIGO}"].value or 0.0
+                    r_a = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_AMIGO}"].value or 0.0
+                    m_ct = ws[f"{col}{ContactoMatutinoMap.FILA_META_CELTA}"].value or 0.0
+                    r_ct = ws[f"{col}{ContactoMatutinoMap.FILA_REAL_CELTA}"].value or 0.0
                     # Si hay algún dato cargado en las celdas
                     if any([m_u, r_u, m_v, r_v, m_c, r_c]):
                         resumen_escaneo["operaciones_diarias"][fecha_previa][ruta_id] = {
@@ -677,7 +695,11 @@ class ExcelService(BaseExcelService):
                             "meta_activaciones": int(m_v if isinstance(m_v, (int, float)) else 0),
                             "real_activaciones": int(r_v if isinstance(r_v, (int, float)) else 0),
                             "meta_cxc": float(m_c if isinstance(m_c, (int, float)) else 0.0),
-                            "real_cxc": float(r_c if isinstance(r_c, (int, float)) else 0.0)
+                            "real_cxc": float(r_c if isinstance(r_c, (int, float)) else 0.0),
+                            "meta_amigo": float(m_a if isinstance(m_a, (int, float)) else 0.0),
+                            "real_amigo": float(r_a if isinstance(r_a, (int, float)) else 0.0),
+                            "meta_celta": float(m_ct if isinstance(m_ct, (int, float)) else 0.0),
+                            "real_celta": float(r_ct if isinstance(r_ct, (int, float)) else 0.0)
                         }
 
             wb.close()

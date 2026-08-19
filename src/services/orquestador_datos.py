@@ -30,7 +30,7 @@ class OrquestadorDatos:
     # 📥 CONTROL DE FLUJO: ESCRITURA REAL EN CALIENTE
     # ========================================================
 
-    def procesar_plan_matutino(self, ruta: int, meta_udvd: float, meta_cobranza: float, meta_activaciones: int, fecha_str: str = None) -> bool:
+    def procesar_plan_matutino(self, ruta: int, meta_udvd: float, meta_cobranza: float, meta_activaciones: int, meta_amigo: float, meta_celta: float, fecha_str: str = None) -> bool:
             fecha_op = fecha_str if fecha_str else datetime.now().strftime("%Y-%m-%d")
             self.logs.registrar_log("INFO", f"Iniciando Plan Matutino Doble para Ruta {ruta} el {fecha_op}")
 
@@ -40,6 +40,8 @@ class OrquestadorDatos:
                 meta_udvd=meta_udvd,
                 meta_cobranza=meta_cobranza,
                 meta_activaciones=meta_activaciones,
+                meta_amigo=meta_amigo,
+                meta_celta=meta_celta,
                 fecha_especifica=fecha_op
             )
 
@@ -50,6 +52,8 @@ class OrquestadorDatos:
             payload_metas = {
                 "meta_udvd": meta_udvd,
                 "meta_activaciones": meta_activaciones,
+                "meta_amigo": meta_amigo,
+                "meta_celta": meta_celta,
                 "meta_cxc": meta_cobranza
             }
 
@@ -58,7 +62,7 @@ class OrquestadorDatos:
                 fecha_target=fecha_op,
                 metas=payload_metas
             )
-    def procesar_cierre_nocturno(self, ruta: int, real_udvd: float, real_cobranza: float, real_activaciones: int, efectivo: float, zelle: float, bs: float, tasa_bcv: float, fecha_str: str = None) -> bool:
+    def procesar_cierre_nocturno(self, ruta: int, real_udvd: float, real_cobranza: float, real_activaciones: int, efectivo: float, zelle: float, bs: float, tasa_bcv: float, real_amigo: float, real_celta: float, fecha_str: str = None) -> bool:
             fecha_op = fecha_str if fecha_str else datetime.now().strftime("%Y-%m-%d")
             self.logs.registrar_log("INFO", f"Iniciando Cierre Nocturno para Ruta {ruta} el {fecha_op}")
 
@@ -72,6 +76,8 @@ class OrquestadorDatos:
                 zelle=zelle,
                 bs=bs,
                 tasa_bcv=tasa_bcv,
+                real_amigo=real_amigo,
+                real_celta=real_celta,
                 fecha_especifica=fecha_op
             )
 
@@ -82,7 +88,9 @@ class OrquestadorDatos:
             payload_cierre = {
                 "real_udvd": real_udvd,
                 "real_activaciones": real_activaciones,
-                "real_cobranza": real_cobranza
+                "real_cobranza": real_cobranza,
+                "real_amigo": real_amigo,
+                "real_celta": real_celta
             }
 
             exito_excel = self.excel.inyectar_cierre_nocturno_excel(
@@ -263,6 +271,11 @@ class OrquestadorDatos:
             return True, "Cuotas actualizadas exitosamente en Base de Datos y Excel."
         else:
             return False, "Error al sincronizar las cuotas con el archivo en Dropbox."
+        
+        
+        
+    # NOTA: ARREGLAR EH IMPLEMENTAR ESTA FUNCION
+    
     def procesar_reporte_texto_ia(self, texto_mensaje: str, parser_ia, ruta_fallback: int = None, fecha_fallback: str = None) -> tuple[bool, str]:
             """
             [MOTOR DE IMPACTO VÍA IA]
@@ -376,6 +389,7 @@ class OrquestadorDatos:
             texto_respuesta += f"⏭️ **Mañana ({f['manana']}):** Plan UDVD: {m_m} | Status: {st_m}\n"
 
         return texto_respuesta
+    
     def consultar_cuotas_mes(self, periodo_str: str) -> str:
         """Formatea la consulta de cuotas mensuales agrupando por ruta"""
         # 1. Obtenemos el diccionario agrupado {ruta_id: {tipo: valor}}
@@ -568,20 +582,27 @@ class OrquestadorDatos:
                     cursor.execute("""
                         INSERT INTO operaciones_diarias (
                             fecha, ruta_id, meta_udvd, real_udvd,
-                            meta_activaciones, real_activaciones, meta_cxc, real_cxc
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            meta_activaciones, real_activaciones, meta_cxc, real_cxc,
+                            meta_amigo, real_amigo, meta_celta, real_celta
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON CONFLICT(fecha, ruta_id) DO UPDATE SET
                             meta_udvd = excluded.meta_udvd,
                             real_udvd = excluded.real_udvd,
                             meta_activaciones = excluded.meta_activaciones,
                             real_activaciones = excluded.real_activaciones,
                             meta_cxc = excluded.meta_cxc,
-                            real_cxc = excluded.real_cxc
+                            real_cxc = excluded.real_cxc,
+                            meta_amigo = excluded.meta_amigo,
+                            real_amigo = excluded.real_amigo,
+                            meta_celta = excluded.meta_celta,
+                            real_celta = excluded.real_celta
                     """, (
                         fecha_op, int(ruta_id),
                         vals["meta_udvd"], vals["real_udvd"],
                         vals["meta_activaciones"], vals["real_activaciones"],
-                        vals["meta_cxc"], vals["real_cxc"]
+                        vals["meta_cxc"], vals["real_cxc"],
+                        vals["meta_amigo"], vals["real_amigo"],
+                        vals["meta_celta"], vals["real_celta"]
                     ))
                     registros_procesados += 1
 

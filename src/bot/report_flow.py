@@ -380,6 +380,8 @@ async def confirmacion_guardado_handler(update: Update, context: ContextTypes.DE
                 meta_udvd=float(payload.get("meta_udvd", 0)),
                 meta_cobranza=float(payload.get("meta_cxc", 0.0)),
                 meta_activaciones=int(payload.get("meta_activaciones", 0)),
+                meta_amigo=float(payload.get("meta_amigo", 0.0)),
+                meta_celta=float(payload.get("meta_celta", 0.0)),
                 fecha_str=fecha_eval
             )
         else:
@@ -393,6 +395,8 @@ async def confirmacion_guardado_handler(update: Update, context: ContextTypes.DE
                 zelle=float(payload.get("zelle_usd", 0.0)),
                 bs=float(payload.get("bs_cambiados_usd", 0.0)),
                 tasa_bcv=float(payload.get("tasa_bcv", 0.0)),
+                real_amigo=float(payload.get("real_amigo", 0.0)),
+                real_celta=float(payload.get("real_celta", 0.0)),
                 fecha_str=fecha_eval
             )
 
