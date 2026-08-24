@@ -90,6 +90,19 @@ async def iniciar_registro_flow(update: Update, context: ContextTypes.DEFAULT_TY
     )
     return ESTADO_REGISTRO_RUTA
 
+
+async def reiniciar_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Limpia el estado actual y vuelve a mostrar el menú adecuado."""
+    context.user_data.clear()
+    await iniciar_registro_flow(update, context)
+    return ConversationHandler.END
+
+
+async def reiniciar_registro_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Reinicia el menú conservando el estado de registro si hace falta."""
+    context.user_data.clear()
+    return await iniciar_registro_flow(update, context)
+
 async def registro_ruta_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Captura y valida la ruta seleccionada."""
     texto = update.message.text
@@ -170,10 +183,27 @@ async def registro_nombre_handler(update: Update, context: ContextTypes.DEFAULT_
 
 # Máquina de estados exportable
 auth_conversacion_handler = ConversationHandler(
-    entry_points=[CommandHandler("start", iniciar_registro_flow)],
+    entry_points=[
+        CommandHandler("start", iniciar_registro_flow),
+        CommandHandler("menu", iniciar_registro_flow),
+        CommandHandler("inicio", iniciar_registro_flow),
+        CommandHandler("hola", iniciar_registro_flow),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+    ],
     states={
-        ESTADO_REGISTRO_RUTA: [MessageHandler(filters.TEXT & ~filters.COMMAND, registro_ruta_handler)],
-        ESTADO_REGISTRO_NOMBRE: [MessageHandler(filters.TEXT & ~filters.COMMAND, registro_nombre_handler)]
+        ESTADO_REGISTRO_RUTA: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, registro_ruta_handler)
+        ],
+        ESTADO_REGISTRO_NOMBRE: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, registro_nombre_handler)
+        ]
     },
-    fallbacks=[]
+    fallbacks=[
+        CommandHandler("menu", reiniciar_registro_handler),
+        CommandHandler("inicio", reiniciar_registro_handler),
+        CommandHandler("hola", reiniciar_registro_handler),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler)
+    ]
 )

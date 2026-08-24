@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 
 from bot.keyboards import BotKeyboards
+from bot.auth_flow import reiniciar_menu_handler
 from services.ia_parser import IAParser
 from services.orquestador_datos import OrquestadorDatos
 from services.excel_service import ExcelService
@@ -78,7 +79,7 @@ async def iniciar_reporte_handler(update: Update, context: ContextTypes.DEFAULT_
         f"📌 **Nota de Fecha:**\n"
         f"• Por defecto, el sistema procesará la información con la **fecha de hoy**.\n"
         f"• Si está reportando una fecha distinta o ajuste, asegúrese de **especificar la fecha** explícitamente en el texto enviado.",
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup=BotKeyboards.obtener_teclado_salir(),
         parse_mode="Markdown"
     )
     return ESTADO_TEXTO_REPORTE
@@ -455,15 +456,24 @@ reporte_conversacion_handler = ConversationHandler(
     ],
     states={
         ESTADO_TEXTO_REPORTE: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_texto_whatsapp_handler)
         ],
         ESTADO_ACUMULANDO_RAFAGA: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([BotKeyboards.FINALIZAR_RAFAGA]), finalizar_rafaga_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, acumular_mensaje_rafaga_handler)
         ],
         ESTADO_CONFIRMACION_REPORTE: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.SI, BotKeyboards.NO, BotKeyboards.CANCELAR]), confirmacion_guardado_handler)
         ]
     },
-    fallbacks=[CommandHandler("cancelar", cancelar_flujo_handler)]
+    fallbacks=[
+        CommandHandler("cancelar", cancelar_flujo_handler),
+        CommandHandler("menu", reiniciar_menu_handler),
+        CommandHandler("inicio", reiniciar_menu_handler),
+        CommandHandler("hola", reiniciar_menu_handler),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler)
+    ]
 )

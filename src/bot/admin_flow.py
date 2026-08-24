@@ -11,6 +11,7 @@ from telegram.ext import (
 )
 
 from bot.keyboards import SupervisorKeyboards, BotKeyboards
+from bot.auth_flow import reiniciar_menu_handler
 from services.ia_parser import IAParser
 from services.orquestador_datos import OrquestadorDatos
 from services.excel_service import ExcelService
@@ -1165,13 +1166,16 @@ admin_conversacion_handler = ConversationHandler(
     ],
     states={
         ESTADO_MONITOREO_VENDEDOR: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, avence_por_ruta_handle)
         ],
         ESTADO_CARGA_MASIVA: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_carga_masiva_cuotas_handle)
         ],
         ESTADO_SI_NO: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Regex("^(Sí|si|SI|sí)$"), sincronizar_excel),
             MessageHandler(filters.Text([BotKeyboards.SI]), sincronizar_excel),
             MessageHandler(filters.Regex("^(No|no|NO)$"), iniciar_menu_coutas),
@@ -1179,23 +1183,28 @@ admin_conversacion_handler = ConversationHandler(
         # Manejo de respuesta inesperada  
         ],
         ESTADO_REPORTE_RAFAGA: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), iniciar_reporte_rafaga_handler),
         ],
         ESTADO_CONFIRMACION_REPORTE_SUP: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR, BotKeyboards.NO, BotKeyboards.SI]), confirmacion_guardado_sup_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler)
         ],
         ESTADO_REPORTE_RUTA_SUP: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, seleccionar_tipo_reporte_handler)
         ],
         ESTADO_SELECCIONAR_TIPO_REPORTE_SUP: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, pedir_datos_reporte_handler)
         ],
         ESTADO_PROCESAR_DATOS_REPORTE_SUP: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_datos_reporte_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler),
@@ -1203,6 +1212,10 @@ admin_conversacion_handler = ConversationHandler(
         ]
     },
     fallbacks=[
+        CommandHandler("menu", reiniciar_menu_handler),
+        CommandHandler("inicio", reiniciar_menu_handler),
+        CommandHandler("hola", reiniciar_menu_handler),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
         MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal)
     ],
     

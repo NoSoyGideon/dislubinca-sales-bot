@@ -20,63 +20,82 @@ class IAParser:
 
         # 3. Prompt con esquema PLANO para reportes individuales (Vendedores)
         self.system_instruction = """
-Eres un asistente ultra preciso de extracción de datos para la empresa Disulubinca. Tu tarea es recibir reportes de texto libre en formatos de plantilla o conversación enviados por vendedores y transformarlos ESTRICTAMENTE en un objeto JSON estructurado.
+            Eres un asistente ultra preciso de extracción de datos para la empresa Disulubinca. Tu tarea es recibir reportes de texto libre en formatos de plantilla o conversación enviados por vendedores y transformarlos ESTRICTAMENTE en un objeto JSON estructurado.
 
-### REGLAS CRÍTICAS DE EXTRACCIÓN DE DATOS:
+            ### REGLAS CRÍTICAS DE EXTRACCIÓN DE DATOS:
 
-1. **UNIDADES / UDVD:**
-   - Si es Plan Matutino, asígnalo a `meta_udvd`.
-   - Si es Cierre Nocturno, asígnalo a `real_udvd`.
-   - Extrae el número de unidades PRINCIPALMENTE del campo "Lubricantes" (Ej: "Lubricantes = 120" -> 120).
-   - IGNORA acumulados semanales (Ej: "19012UDVD").
+            1. **UNIDADES / UDVD (LUBRICANTES):**
+            - Si es Plan Matutino, asígnalo a `meta_udvd`.
+            - Si es Cierre Nocturno, asígnalo a `real_udvd`.
+            - Extrae el número de unidades PRINCIPALMENTE del campo "Lubricantes" (Ej: "Lubricantes = 120" -> 120).
+            - IGNORA acumulados semanales (Ej: "19012UDVD").
 
-2. **VISITAS / ACTIVACIONES:**
-   - Si es Plan Matutino, asígnalo a `meta_activaciones`.
-   - Si es Cierre Nocturno, asígnalo a `real_activaciones`.
+            2. **MARCA AMIGO (SUMATORIA DE LÍNEAS AMIGO):**
+            - Suma las cantidades de los productos pertenecientes a la línea AMIGO.
+            - Productos Amigo habituales: "Filtros Aceites", "Filtros Gas", "Filtros Aire", "Bujías", "Cepillo", "Correas", "Cables", "Liga" (o cualquier variante referente a filtros/repuestos de marca Amigo).
+            - Si es Plan Matutino, la suma total va en `meta_amigo`.
+            - Si es Cierre Nocturno, la suma total va en `real_amigo`.
 
-3. **COBRANZAS / CXC:**
-   - Si es Plan Matutino, la meta va en `meta_cxc`.
-   - Si es Cierre Nocturno, el total va en `real_cxc`.
+            3. **MARCA CELTA (SUMATORIA DE LÍNEAS CELTA):**
+            - Suma las cantidades de los productos pertenecientes a la línea CELTA.
+            - Productos Celta habituales: "Refrigerante Cel", "Producto Cel", "Celta", o cualquier variante que contenga "Cel" / "Celta".
+            - Si es Plan Matutino, la suma total va en `meta_celta`.
+            - Si es Cierre Nocturno, la suma total va en `real_celta`.
 
-4. **DESGLOSE DE CAJA (Solo Cierre Nocturno):**
-   - Extrae `efectivo_usd`, `zelle_usd`, `bs_cambiados_usd` y `tasa_bcv` si están presentes.
+            4. **OTRAS CATEGORÍAS / MARCAS FUTURAS:**
+            - Si en el texto se mencionan líneas no clasificadas (Ej: "Productos fla"), NO las sumes en Amigo ni Celta a menos que se indique explícitamente.
 
-5. **FECHA Y RUTA:**
-   - `fecha_mencionada`: Formato "YYYY-MM-DD" o null.
-   - `ruta`: Número de la ruta (int) o null.
+            5. **VISITAS / ACTIVACIONES:**
+            - Si es Plan Matutino, asígnalo a `meta_activaciones`.
+            - Si es Cierre Nocturno, asígnalo a `real_activaciones`.
 
----
+            6. **COBRANZAS / CXC:**
+            - Si es Plan Matutino, la meta va en `meta_cxc`.
+            - Si es Cierre Nocturno, el total va en `real_cxc`.
 
-### TIPOS DE INTENCIÓN (`tipo_intencion`):
-- `PLAN_MATUTINO`: Si incluye plan/metas, "PLAN del dia", o proyecciones matutinas.
-- `REPORTE_FULL_NOCHE`: Si incluye "Cierre del dia", "Cobranza", o logros reales de la noche.
-- `AJUSTE_INDIVIDUAL`: Si pide sumar, restar o modificar un dato puntual.
+            7. **DESGLOSE DE CAJA (Solo Cierre Nocturno):**
+            - Extrae `efectivo_usd`, `zelle_usd`, `bs_cambiados_usd` y `tasa_bcv` si están presentes.
 
-### DÍA DE DESTINO (`dia_destino`):
-- `AYER`: Si menciona "ayer".
-- `HOY`: Si menciona "hoy", fecha de hoy o por defecto.
-- `MANANA`: Si menciona "mañana" o anticipo.
+            8. **FECHA Y RUTA:**
+            - `fecha_mencionada`: Formato "YYYY-MM-DD" o null.
+            - `ruta`: Número de la ruta (int) o null.
 
----
+            ---
 
-### FORMATO JSON STRICTO DE RESPUESTA:
-{
-  "ruta": null,
-  "fecha_mencionada": null,
-  "tipo_intencion": "PLAN_MATUTINO",
-  "dia_destino": "HOY",
-  "meta_udvd": 0,
-  "meta_cxc": 0.0,
-  "meta_activaciones": 0,
-  "real_udvd": 0,
-  "real_cxc": 0.0,
-  "real_activaciones": 0,
-  "efectivo_usd": 0.0,
-  "zelle_usd": 0.0,
-  "bs_cambiados_usd": 0.0,
-  "tasa_bcv": 0.0
-}
-""" 
+            ### TIPOS DE INTENCIÓN (`tipo_intencion`):
+            - `PLAN_MATUTINO`: Si incluye plan/metas, "PLAN del dia", o proyecciones matutinas.
+            - `REPORTE_FULL_NOCHE`: Si incluye "Cierre del dia", "Cobranza", o logros reales de la noche.
+            - `AJUSTE_INDIVIDUAL`: Si pide sumar, restar o modificar un dato puntual.
+
+            ### DÍA DE DESTINO (`dia_destino`):
+            - `AYER`: Si menciona "ayer".
+            - `HOY`: Si menciona "hoy", fecha de hoy o por defecto.
+            - `MANANA`: Si menciona "mañana" o anticipo.
+
+            ---
+
+            ### FORMATO JSON ESTRICTO DE RESPUESTA:
+            {
+            "ruta": null,
+            "fecha_mencionada": null,
+            "tipo_intencion": "PLAN_MATUTINO",
+            "dia_destino": "HOY",
+            "meta_udvd": 0,
+            "meta_amigo": 0,
+            "meta_celta": 0,
+            "meta_cxc": 0.0,
+            "meta_activaciones": 0,
+            "real_udvd": 0,
+            "real_amigo": 0,
+            "real_celta": 0,
+            "real_cxc": 0.0,
+            "real_activaciones": 0,
+            "efectivo_usd": 0.0,
+            "zelle_usd": 0.0,
+            "bs_cambiados_usd": 0.0,
+            "tasa_bcv": 0.0
+            }
+            """ 
 
         # 4. Prompt para Carga Masiva de Cuotas / Metas Mensuales (Supervisor)
         self.system_instruction_supervisor = """
@@ -115,48 +134,51 @@ Tu objetivo es analizar textos libres que contengan las cuotas/metas asignadas a
 """
 
     def _normalizar_respuesta(self, datos_raw: dict) -> dict:
-        """
-        Garantiza que el diccionario tenga todos los campos esperados por report_flow.py,
-        evitando KeyError y nulos impredecibles.
-        """
-        esquema_defecto = {
-            "ruta": None,
-            "fecha_mencionada": None,
-            "tipo_intencion": "PLAN_MATUTINO",
-            "dia_destino": "HOY",
-            "meta_udvd": 0,
-            "meta_cxc": 0.0,
-            "meta_activaciones": 0,
-            "real_udvd": 0,
-            "real_cxc": 0.0,
-            "real_activaciones": 0,
-            "efectivo_usd": 0.0,
-            "zelle_usd": 0.0,
-            "bs_cambiados_usd": 0.0,
-            "tasa_bcv": 0.0
-        }
+            """
+            Garantiza que el diccionario tenga todos los campos esperados por report_flow.py,
+            evitando KeyError y nulos impredecibles.
+            """
+            esquema_defecto = {
+                "ruta": None,
+                "fecha_mencionada": None,
+                "tipo_intencion": "PLAN_MATUTINO",
+                "dia_destino": "HOY",
+                "meta_udvd": 0,
+                "meta_amigo": 0,
+                "meta_celta": 0,
+                "meta_cxc": 0.0,
+                "meta_activaciones": 0,
+                "real_udvd": 0,
+                "real_amigo": 0,
+                "real_celta": 0,
+                "real_cxc": 0.0,
+                "real_activaciones": 0,
+                "efectivo_usd": 0.0,
+                "zelle_usd": 0.0,
+                "bs_cambiados_usd": 0.0,
+                "tasa_bcv": 0.0
+            }
 
-        if not isinstance(datos_raw, dict):
-            return esquema_defecto
+            if not isinstance(datos_raw, dict):
+                return esquema_defecto
 
-        resultado = {}
-        for clave, valor_defecto in esquema_defecto.items():
-            valor = datos_raw.get(clave)
-            if valor is None:
-                resultado[clave] = valor_defecto
-            else:
-                try:
-                    if isinstance(valor_defecto, float):
-                        resultado[clave] = float(valor)
-                    elif isinstance(valor_defecto, int) and not isinstance(valor_defecto, bool):
-                        resultado[clave] = int(valor)
-                    else:
-                        resultado[clave] = valor
-                except (ValueError, TypeError):
+            resultado = {}
+            for clave, valor_defecto in esquema_defecto.items():
+                valor = datos_raw.get(clave)
+                if valor is None:
                     resultado[clave] = valor_defecto
+                else:
+                    try:
+                        if isinstance(valor_defecto, float):
+                            resultado[clave] = float(valor)
+                        elif isinstance(valor_defecto, int) and not isinstance(valor_defecto, bool):
+                            resultado[clave] = int(valor)
+                        else:
+                            resultado[clave] = valor
+                    except (ValueError, TypeError):
+                        resultado[clave] = valor_defecto
 
-        return resultado
-    
+            return resultado
     def _normalizar_respuesta_cuotas(self, datos_raw: dict) -> dict:
         """
         Normaliza la respuesta masiva de cuotas enviada por el supervisor.

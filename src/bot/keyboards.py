@@ -29,6 +29,7 @@ class BotKeyboards:
     
     SI = "✅ Sí"
     NO = "❌ No"
+    SALIR_MENU = "🏠 Volver al inicio"
     
     @classmethod
     def obtener_teclado_vendedor(cls) -> ReplyKeyboardMarkup:
@@ -53,7 +54,8 @@ class BotKeyboards:
         """Teclado activo MIENTRAS el vendedor envía fragmentos de texto"""
         botones = [
             [KeyboardButton(cls.FINALIZAR_RAFAGA)],
-            [KeyboardButton(cls.CANCELAR)]
+            [KeyboardButton(cls.CANCELAR)],
+            [KeyboardButton(cls.SALIR_MENU)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)
     @classmethod
@@ -82,9 +84,19 @@ class BotKeyboards:
         """Teclado temporal para validar la extracción de la IA"""
         botones = [
             [KeyboardButton(cls.SI)],
-            [KeyboardButton(cls.NO)]
+            [KeyboardButton(cls.NO)],
+            [KeyboardButton(cls.SALIR_MENU)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True, one_time_keyboard=True)
+
+    @classmethod
+    def obtener_teclado_salir(cls) -> ReplyKeyboardMarkup:
+        """Teclado visible para abandonar cualquier flujo activo."""
+        return ReplyKeyboardMarkup(
+            [[KeyboardButton(cls.SALIR_MENU)]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
 
 class SupervisorKeyboards:
     # --- MENÚ PRINCIPAL SUPERVISOR (NIVEL 1) ---
