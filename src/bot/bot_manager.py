@@ -17,6 +17,7 @@ from bot.vendedor_handlers import mi_rendimiento_handler
 from config.config import Config
 from database.connection import DBConnection
 from database.init_db import inicializar_base_de_datos
+from database.dataset import poblar_vendedores_produccion
 from database.logs_repo import LogsRepository
 
 # 1. Importamos las Máquinas de Estado (Conversaciones)
@@ -56,6 +57,7 @@ class DisulubincaBot:
     def __init__(self):
         print("🗄️ Verificando e inicializando la base de datos...")
         inicializar_base_de_datos()
+        poblar_vendedores_produccion()
 
         self.config = Config()
         self.conector = DBConnection()

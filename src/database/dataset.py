@@ -19,13 +19,14 @@ def poblar_vendedores_produccion():
     
     # Usaremos IDs únicos basados en la ruta para que no se dupliquen ni choquen bajo ninguna circunstancia
     vendedores = [
-        (100015, "Rumaldo Medina", 15, "VENDEDOR", "AUTORIZADO"),
-        (100017, "Alfredo Struch", 17, "VENDEDOR", "AUTORIZADO"),
-        (100021, "Dayanara Marriaga", 21, "VENDEDOR", "AUTORIZADO"),
-        (100030, "Laura Marín", 30, "VENDEDOR", "AUTORIZADO"),
-        (100032, "Rebeca Romero", 32, "VENDEDOR", "AUTORIZADO"),
-        (100010, "Mariedgar Martínez", 10, "VENDEDOR", "AUTORIZADO"),
-        (100039, "Carla Cardozo", 39, "VENDEDOR", "AUTORIZADO")
+        (None, "Rumaldo Medina", 15, "VENDEDOR", "PENDIENTE",1),
+        (None, "Alfredo Struch", 17, "VENDEDOR", "PENDIENTE",1),
+        (None, "Dayanara Marriaga", 21, "VENDEDOR", "PENDIENTE",1),
+        (None, "Laura Marín", 26, "VENDEDOR", "PENDIENTE",0),
+        (None, "Rebeca Romero", 30, "VENDEDOR", "PENDIENTE",1),
+        (None, "Mariedgar Martínez", 32, "VENDEDOR", "PENDIENTE",1),
+        (None, "Carla Cardozo", 39, "VENDEDOR", "PENDIENTE",1),
+        (6236041892, "Orlando Marcano", 13, "SUPERVISOR", "AUTORIZADO",1),
     ]
     
     # Limpiamos las pruebas viejas 'PENDIENTES' o duplicadas en la tabla para dejar la casa limpia
@@ -33,8 +34,8 @@ def poblar_vendedores_produccion():
         cursor.execute("DELETE FROM usuarios WHERE rol = 'VENDEDOR';")
         
         query = """
-            INSERT INTO usuarios (telegram_id, nombre_telegram, ruta, rol, estado)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO usuarios (telegram_id, nombre_telegram, ruta, rol, estado,bajo_responsabilidad_supervisor)
+            VALUES (?, ?, ?, ?, ?, ?);
         """
         
         cursor.executemany(query, vendedores)
