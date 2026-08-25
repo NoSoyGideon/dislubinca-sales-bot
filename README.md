@@ -103,8 +103,32 @@ python src/database/init_db.py
 ### 6. Run the Application
 
 ```bash
-python main.py
+python src/main.py
 ```
+
+## Deploy on Render
+
+This bot runs as a **Background Worker** because it uses Telegram long polling.
+The repository includes `render.yaml` with the build and start commands:
+
+```text
+Build: pip install -r requirements.txt
+Start: python src/main.py
+```
+
+Create the Render service from the repository and configure these secret environment variables:
+
+```text
+TELEGRAM_BOT_TOKEN
+GEMINI_API_KEY
+DROPBOX_API_KEY
+DROPBOX_API_SECRET
+DROPBOX_REFRESH_TOKEN
+```
+
+`render.yaml` configures `DB_PATH=/var/data/usuarios.db` on a Persistent Disk so SQLite survives deploys and restarts. Do not commit `.env`, API keys, or `venv/`; Render creates its own virtual environment during the build.
+
+After the first deploy, load the production seller dataset from a shell or one-off job using `src/database/dataset.py`. The database schema is created automatically when `src/main.py` starts.
 
 ---
 

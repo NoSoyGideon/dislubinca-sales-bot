@@ -1,0 +1,25 @@
+services:
+  - type: worker
+    name: dislubinca-bot
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python src/main.py
+    autoDeploy: true
+    disk:
+      name: dislubinca-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: DB_PATH
+        value: /var/data/usuarios.db
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: DROPBOX_API_KEY
+        sync: false
+      - key: DROPBOX_API_SECRET
+        sync: false
+      - key: DROPBOX_REFRESH_TOKEN
+        sync: false

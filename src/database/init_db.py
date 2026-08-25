@@ -9,7 +9,11 @@ import os
 EJECUTAR_MIGRACION_AL_ARRANCAR = True
 
 def inicializar_base_de_datos():
-    db_path = os.path.join(os.path.dirname(__file__), 'usuarios.db')
+    db_path = os.getenv(
+        "DB_PATH",
+        os.path.join(os.path.dirname(__file__), "usuarios.db")
+    )
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     conexion = sqlite3.connect(db_path)
     cursor = conexion.cursor()
 

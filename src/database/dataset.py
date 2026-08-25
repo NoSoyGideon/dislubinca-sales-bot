@@ -2,16 +2,9 @@ import sqlite3
 import os
 
 def poblar_vendedores_produccion():
-    # 1. Forzamos la ruta absoluta real del proyecto basándonos en dónde está este script
+    # Respeta el mismo destino usado por el bot, incluido el Persistent Disk de Render.
     directorio_actual = os.path.dirname(os.path.abspath(__file__))
-    
-    # Intentamos ubicarla en la carpeta del repositorio
-    db_path = os.path.join(directorio_actual, "src", "database", "usuarios.db")
-    
-    # Si estás ejecutando esto DESDE adentro de src/database/ o similar, hacemos un chequeo preventivo
-    if not os.path.exists(db_path):
-        # Intentamos buscarla en el directorio actual por si acaso
-        db_path = os.path.join(directorio_actual, "usuarios.db")
+    db_path = os.getenv("DB_PATH", os.path.join(directorio_actual, "usuarios.db"))
         
     # Si aún no existe, lanzamos una alerta clara en lugar de crear un archivo vacío
     if not os.path.exists(db_path):
