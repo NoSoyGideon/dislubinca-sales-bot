@@ -14,4 +14,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n🛑 Bot detenido manualmente por el usuario.")
     except Exception as e:
-        print(f"\n❌ Error fatal ejecutando el bot: {e}")
+        print(f"\n❌ Error fatal preparando o ejecutando el bot: {e}")

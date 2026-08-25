@@ -274,15 +274,15 @@ class ExcelService(BaseExcelService):
         [FUNCIÓN AUXILIAR DE RELEVO DE COBRANZA]
         lote_cobros: { 10: 1500.0, 15: 3200.0 }
         Escribe en la matriz P9:P20 según el día:
-        - Lunes: Columna R | Martes: Columna S | Miércoles: Columna T | Jueves: Columna U
-        - Viernes: SE IGNORA COMPLETAMENTE.
+        - Lunes: Columna S | Martes: Columna T | Miércoles: Columna U
+        - Jueves: Columna V | Viernes: Columna R.
         """
         dt = datetime.strptime(fecha_str, "%Y-%m-%d")
         dia_semana = dt.weekday()
         fecha_siguiente = self._calcular_fecha_siguiente(fecha_str)
         
-        if dia_semana >= 4:
-            print(f"ℹ️ [ExcelService] Fecha {fecha_str} es Viernes/Fin de semana. Se omite el relevo de cobranza.")
+        if dia_semana >= 5:
+            print(f"ℹ️ [ExcelService] Fecha {fecha_str} es fin de semana. Se omite el relevo de cobranza.")
             return True
 
         mapa_columnas_dias = ContactoMatutinoMap.COLUMNAS_DIAS_COBRANZA

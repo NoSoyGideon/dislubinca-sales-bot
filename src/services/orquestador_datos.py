@@ -1,7 +1,7 @@
 # src/services/orquestador_datos.py
 
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from services.excel_service import ExcelService
 
 class OrquestadorDatos:
@@ -185,6 +185,45 @@ class OrquestadorDatos:
         else:
             self.logs.registrar_log("ERROR", f"❌ No se pudo completar la purga del mes {mes_str} en SQLite.")
             return False
+
+    def ejecutar_mantenimiento_si_corresponde(self, ahora: datetime) -> bool:
+        """Ejecuta una sola vez el mantenimiento del mes anterior en el ciclo vigente."""
+        if ahora.day < 10:
+            return False
+
+        inicio_mes_actual = ahora.replace(day=1)
+        mes_anterior = (inicio_mes_actual - timedelta(days=1)).strftime("%Y-%m")
+        conexion = self.repo.db.obtener_conexion()
+
+        try:
+            cursor = conexion.cursor()
+            cursor.execute(
+                "SELECT 1 FROM mantenimientos_mensuales WHERE periodo = ?",
+                (mes_anterior,)
+            )
+            if cursor.fetchone():
+                return False
+        finally:
+            conexion.close()
+
+        if not self.ejecutar_mantenimiento_mensual(mes_anterior):
+            return False
+
+        conexion = self.repo.db.obtener_conexion()
+        try:
+            conexion.execute(
+                "INSERT INTO mantenimientos_mensuales (periodo) VALUES (?)",
+                (mes_anterior,)
+            )
+            conexion.commit()
+        finally:
+            conexion.close()
+
+        self.logs.registrar_log(
+            "INFO",
+            f"✅ Mantenimiento mensual completado para el período {mes_anterior}."
+        )
+        return True
         
     def establecer_cuotas_mensuales(self, fecha_str: str, lote_cuotas: dict, usuarios_repo) -> tuple[bool, str]:
         """

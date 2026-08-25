@@ -51,10 +51,12 @@ class ContactoMatutinoMap:
     FILA_FIN_RUTAS = 20
 
     COLUMNAS_DIAS_COBRANZA = {
+        
         0: "S",  # Lunes
         1: "T",  # Martes
         2: "U",  # Miércoles
-        3: "V"   # Jueves
+        3: "V",   # Jueves
+        4: "R"   # Viernes
     }
 
     # 📊 Pestaña CONTROL (Cuotas Mensuales)

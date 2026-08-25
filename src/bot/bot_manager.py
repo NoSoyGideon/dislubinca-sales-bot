@@ -1,6 +1,8 @@
 # src/bot/bot_manager.py
 
 import logging
+from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -14,6 +16,7 @@ from bot.keyboards import BotKeyboards
 from bot.vendedor_handlers import mi_rendimiento_handler
 from config.config import Config
 from database.connection import DBConnection
+from database.init_db import inicializar_base_de_datos
 from database.logs_repo import LogsRepository
 
 # 1. Importamos las Máquinas de Estado (Conversaciones)
@@ -51,6 +54,9 @@ async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYP
     logging.error(f"❌ Excepción no controlada procesando evento: {error}", exc_info=error)
 class DisulubincaBot:
     def __init__(self):
+        print("🗄️ Verificando e inicializando la base de datos...")
+        inicializar_base_de_datos()
+
         self.config = Config()
         self.conector = DBConnection()
         self.logger_repo = LogsRepository(self.conector)
@@ -65,6 +71,31 @@ class DisulubincaBot:
             dropbox_service=self.dropbox_service,
             excel_service=self.excel_service
         )
+
+    async def _mantenimiento_mensual_job(self, context):
+        """Revisa y ejecuta el mantenimiento mensual en horario venezolano."""
+        ahora = datetime.now(ZoneInfo("America/Caracas"))
+        self._ejecutar_mantenimiento(ahora)
+
+    def _ejecutar_mantenimiento(self, ahora):
+        ejecutado = self.orquestador.ejecutar_mantenimiento_si_corresponde(ahora)
+        if ejecutado:
+            mes_anterior = (ahora.replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+            print(f"🧹 Mantenimiento mensual ejecutado para {mes_anterior}.")
+
+    def _programar_mantenimiento_mensual(self, application):
+        """Programa el mantenimiento el día 10 a las 02:00 de Venezuela."""
+        zona_venezuela = ZoneInfo("America/Caracas")
+        application.job_queue.run_monthly(
+            self._mantenimiento_mensual_job,
+            when=time(hour=2, minute=0, tzinfo=zona_venezuela),
+            day=10,
+            name="mantenimiento_mensual"
+        )
+
+        ahora = datetime.now(zona_venezuela)
+        if ahora.day == 10 and (ahora.hour, ahora.minute) >= (2, 0):
+            self._ejecutar_mantenimiento(ahora)
         
         
 
@@ -89,6 +120,7 @@ class DisulubincaBot:
             .read_timeout(30.0)
             .build()
         )
+        self._programar_mantenimiento_mensual(application)
         application.add_error_handler(global_error_handler)
         # 🚥 1. MÁQUINAS DE ESTADO (Prioridad Máxima en la cadena de captura)
         # auth_conversacion_handler captura el /start inicial para registros

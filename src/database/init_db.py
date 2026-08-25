@@ -100,6 +100,15 @@ def inicializar_base_de_datos():
         )
     ''')
 
+    # 🧹 TABLA E: CONTROL DE MANTENIMIENTOS MENSUALES
+    # Impide repetir una purga si el bot se reinicia o el job se dispara dos veces.
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS mantenimientos_mensuales (
+            periodo TEXT PRIMARY KEY,                  -- Formato: 'YYYY-MM'
+            ejecutado_en DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
     conexion.commit()
 
     # ==========================================

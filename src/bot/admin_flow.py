@@ -62,7 +62,7 @@ async def iniciar_menu_personal(update: Update, context: ContextTypes.DEFAULT_TY
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mensaje_personal = (
@@ -91,7 +91,7 @@ async def iniciar_menu_principal(update: Update, context: ContextTypes.DEFAULT_T
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos para acceder a este menú.")
+        await update.message.reply_text("❌ No tienes permisos para acceder a este menú.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     await update.message.reply_text(
@@ -110,7 +110,7 @@ async def iniciar_menu_coutas(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mensaje_cuotas = (
@@ -142,7 +142,7 @@ async def ver_solicitudes_handler(update: Update, context: ContextTypes.DEFAULT_
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     pendientes = usuarios_repo.listar_vendedores_pendientes()
@@ -151,6 +151,7 @@ async def ver_solicitudes_handler(update: Update, context: ContextTypes.DEFAULT_
         await update.message.reply_text(
             "✅ **SIN SOLICITUDES PENDIENTES**\n\n"
             "No hay nuevos vendedores esperando aprobación en este momento.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
         return ConversationHandler.END
@@ -158,6 +159,7 @@ async def ver_solicitudes_handler(update: Update, context: ContextTypes.DEFAULT_
     await update.message.reply_text(
         f"📩 **SOLICITUDES DE ACCESO PENDIENTES ({len(pendientes)})**\n"
         "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        reply_markup=SupervisorKeyboards.obtener_volver_menu(),
         parse_mode="Markdown"
     )
 
@@ -201,7 +203,7 @@ async def estatus_vendedores_handler(update: Update, context: ContextTypes.DEFAU
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     hoy_str = datetime.now().strftime("%Y-%m-%d")
@@ -212,6 +214,7 @@ async def estatus_vendedores_handler(update: Update, context: ContextTypes.DEFAU
     if not estatus_rutas:
         await update.message.reply_text(
             "⚠️ No hay vendedores o rutas activas registradas en el sistema.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
         return ConversationHandler.END
@@ -239,7 +242,7 @@ async def estatus_vendedores_handler(update: Update, context: ContextTypes.DEFAU
 
     txt += f"📈 **Resumen del día:** {completados}/{total_rutas} rutas completadas al 100%."
 
-    await update.message.reply_text(txt, parse_mode="Markdown")
+    await update.message.reply_text(txt, reply_markup=SupervisorKeyboards.obtener_volver_menu(), parse_mode="Markdown")
     return ConversationHandler.END
 
 
@@ -250,7 +253,7 @@ async def lista_activos_handler(update: Update, context: ContextTypes.DEFAULT_TY
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     activos = usuarios_repo.listar_vendedores_autorizados()
@@ -259,6 +262,7 @@ async def lista_activos_handler(update: Update, context: ContextTypes.DEFAULT_TY
         await update.message.reply_text(
             "📋 **DIRECTORIO DE PERSONAL**\n\n"
             "No hay vendedores autorizados activos en el sistema actualmente.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
         return ConversationHandler.END
@@ -274,7 +278,7 @@ async def lista_activos_handler(update: Update, context: ContextTypes.DEFAULT_TY
 
     txt += "\n💡 *Para desautorizar o cambiar la ruta a un vendedor, utiliza el panel individual.*"
 
-    await update.message.reply_text(txt, parse_mode="Markdown")
+    await update.message.reply_text(txt, reply_markup=SupervisorKeyboards.obtener_volver_menu(), parse_mode="Markdown")
     return ConversationHandler.END
 
 # ========================================================
@@ -287,7 +291,7 @@ async def iniciar_menu_monitoreo(update: Update, context: ContextTypes.DEFAULT_T
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mensaje_monitoreo = (
@@ -315,7 +319,7 @@ async def iniciar_menu_reportes(update: Update, context: ContextTypes.DEFAULT_TY
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mensaje_reportes = (
@@ -344,7 +348,7 @@ async def avance_mes_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mes_str = datetime.now().strftime("%Y-%m")
@@ -353,7 +357,7 @@ async def avance_mes_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     d = reportes_repo.obtener_resumen_dashboard_global(mes_str)
 
     if not d:
-        await update.message.reply_text("⚠️ No se encontraron registros para el mes en curso.")
+        await update.message.reply_text("⚠️ No se encontraron registros para el mes en curso.", reply_markup=SupervisorKeyboards.obtener_volver_menu())
         return ConversationHandler.END
 
     # Generación de barras visuales
@@ -378,7 +382,7 @@ async def avance_mes_handler(update: Update, context: ContextTypes.DEFAULT_TYPE)
     txt += f"• Progreso: `{b_cxc} {p_cxc:.1f}%`\n"
     txt += f"• Falta: ${d.get('falta_cxc', 0.0):,.2f}\n"
 
-    await update.message.reply_text(txt, parse_mode="Markdown")
+    await update.message.reply_text(txt, reply_markup=SupervisorKeyboards.obtener_volver_menu(), parse_mode="Markdown")
     return ConversationHandler.END
 
 
@@ -389,7 +393,7 @@ async def avance_mes_supervisor_handler(update: Update, context: ContextTypes.DE
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     mes_str = datetime.now().strftime("%Y-%m")
@@ -398,7 +402,7 @@ async def avance_mes_supervisor_handler(update: Update, context: ContextTypes.DE
     d = reportes_repo.obtener_resumen_dashboard_supervisor(mes_str)
 
     if not d:
-        await update.message.reply_text("⚠️ No se encontraron registros para el mes en curso.")
+        await update.message.reply_text("⚠️ No se encontraron registros para el mes en curso.", reply_markup=SupervisorKeyboards.obtener_volver_menu())
         return ConversationHandler.END
 
     # Generación de barras visuales
@@ -417,7 +421,7 @@ async def avance_mes_supervisor_handler(update: Update, context: ContextTypes.DE
     txt += f"• Progreso: `{b_udvd} {p_udvd:.1f}%`\n"
     txt += f"• Falta: {d.get('falta_udvd', 0):,.0f} UDVD\n\n"
 
-    await update.message.reply_text(txt, parse_mode="Markdown")
+    await update.message.reply_text(txt, reply_markup=SupervisorKeyboards.obtener_volver_menu(), parse_mode="Markdown")
     return ConversationHandler.END
 
 
@@ -429,7 +433,7 @@ async def seleccionar_avance_ruta_handler(update: Update, context: ContextTypes.
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     # Obtener teclado dinámico con rutas activas
@@ -450,7 +454,7 @@ async def seleccionar_reporte_ruta_handler(update: Update, context: ContextTypes
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     # Obtener teclado dinámico con rutas activas
@@ -477,7 +481,7 @@ async def avence_por_ruta_handle(update: Update, context: ContextTypes.DEFAULT_T
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     texto = update.message.text
@@ -487,7 +491,10 @@ async def avence_por_ruta_handle(update: Update, context: ContextTypes.DEFAULT_T
     num_ruta = int(coincidencia.group()) if coincidencia else None
 
     if num_ruta is None:
-        await update.message.reply_text("⚠️ No se pudo identificar la ruta seleccionada. Por favor, inténtalo de nuevo.")
+        await update.message.reply_text(
+            "⚠️ No se pudo identificar la ruta seleccionada. Por favor, inténtalo de nuevo.",
+            reply_markup=SupervisorKeyboards.obtener_sub_monitoreo()
+        )
         return ESTADO_MONITOREO_VENDEDOR
 
     mes_str = datetime.now().strftime("%Y-%m")
@@ -536,7 +543,7 @@ async def obtener_estatus_hoy(update: Update, context: ContextTypes.DEFAULT_TYPE
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     hoy_str = datetime.now().strftime("%Y-%m-%d")
@@ -556,7 +563,7 @@ async def pedir_carga_masiva_cuotas_handler(update: Update, context: ContextType
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     await update.message.reply_text(
@@ -565,7 +572,7 @@ async def pedir_carga_masiva_cuotas_handler(update: Update, context: ContextType
         "Por favor, escribe en un solo mensaje las difenretes cuotas de el mes que contiene las cuotas actualizadas para todas las rutas.\n\n",
 
         parse_mode="Markdown",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=BotKeyboards.obtener_teclado_salir()
     )
     return ESTADO_CARGA_MASIVA
 
@@ -575,7 +582,7 @@ async def procesar_carga_masiva_cuotas_handle(update: Update, context: ContextTy
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     cuotas_texto = update.message.text
@@ -605,7 +612,8 @@ async def procesar_carga_masiva_cuotas_handle(update: Update, context: ContextTy
 
         await update.message.reply_text(
             mensaje_usuario,
-            parse_mode="Markdown"
+            parse_mode="Markdown",
+            reply_markup=SupervisorKeyboards.obtener_teclado_reintento()
         )
         return ESTADO_CARGA_MASIVA
     mes_str = datetime.now().strftime("%Y-%m-%d")
@@ -617,12 +625,14 @@ async def procesar_carga_masiva_cuotas_handle(update: Update, context: ContextTy
         await update.message.reply_text(
             f"✅ **Carga Masiva Exitosa**\n\n"
             f"Se han actualizado las cuotas.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
     else:
         await update.message.reply_text(
             f"❌ **Error en la Carga Masiva**\n\n"
             f"{mensaje}",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
 
@@ -636,7 +646,7 @@ async def cuotas_todos_vendedores_handler(update: Update, context: ContextTypes.
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
     
     mes_str = datetime.now().strftime("%Y-%m")
@@ -687,7 +697,7 @@ async def iniciar_reporte_rafaga_handler(update: Update, context: ContextTypes.D
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     await update.message.reply_text(
@@ -695,7 +705,7 @@ async def iniciar_reporte_rafaga_handler(update: Update, context: ContextTypes.D
         "Ingrese el reporte con lujo de detalles para evitar errores de interpretación. El sistema procesará la información y generará un reporte completo."
         "• Si está reportando una fecha distinta o ajuste, asegúrese de **especificar la fecha** explícitamente en el texto enviado.",
         parse_mode="Markdown",
-        reply_markup=ReplyKeyboardRemove()
+        reply_markup=SupervisorKeyboards.obtener_teclado_reintento()
     )
     return ESTADO_REPORTE_RAFAGA
 
@@ -707,12 +717,16 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     reporte_texto = update.message.text
     
-    await update.message.reply_text("⏳ *DislubinBot esta procesando reporte ... Por favor espera.*", parse_mode="Markdown")
+    await update.message.reply_text(
+        "⏳ *DislubinBot esta procesando reporte ... Por favor espera.*",
+        parse_mode="Markdown",
+        reply_markup=SupervisorKeyboards.obtener_teclado_reintento()
+    )
     
     resultado_ia = parser_ia.parsear_texto_libre(reporte_texto)
 
@@ -816,10 +830,11 @@ async def confirmacion_guardado_sup_handler(update: Update, context: ContextType
     fecha_eval = context.user_data.get("fecha_evaluar_sup") or datetime.now().strftime("%Y-%m-%d")
     es_matutino = context.user_data.get("es_matutino_sup", False)
 
-    if decision == BotKeyboards.CONFIRMAR or BotKeyboards.SI:
+    if decision in (BotKeyboards.CONFIRMAR, BotKeyboards.SI):
         await update.message.reply_text(
             "⏳ *Guardando en la base de datos local y sincronizando en Dropbox...*",
-            parse_mode="Markdown"
+            parse_mode="Markdown",
+            reply_markup=BotKeyboards.obtener_teclado_salir()
         )
 
         exito = False
@@ -881,7 +896,7 @@ async def pedir_confirmacion_handler(update: Update, context: ContextTypes.DEFAU
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
     await update.message.reply_text(
@@ -899,7 +914,7 @@ async def sincronizar_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
-        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
     fecha_str = datetime.now().strftime("%Y-%m-%d")
     # Lógica para sincronizar el archivo Excel
@@ -909,11 +924,13 @@ async def sincronizar_excel(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "✅ **Sincronización Exitosa**\n\n"
             "El archivo Excel ha sido sincronizado correctamente.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
     else:
         await update.message.reply_text(
             f"❌ **Error en la Sincronización**\n\n",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
             parse_mode="Markdown"
         )
 
@@ -973,7 +990,10 @@ async def seleccionar_tipo_reporte_handler(update: Update, context: ContextTypes
     num_ruta = int(coincidencia.group()) if coincidencia else None
 
     if num_ruta is None:
-        await update.message.reply_text("⚠️ No se pudo identificar la ruta seleccionada. Inténtalo de nuevo.")
+        await update.message.reply_text(
+            "⚠️ No se pudo identificar la ruta seleccionada. Inténtalo de nuevo.",
+            reply_markup=BotKeyboards.obtener_teclado_salir()
+        )
         return ESTADO_REPORTE_RUTA_SUP
 
     # Guardar la ruta en user_data
@@ -1028,12 +1048,15 @@ async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFA
             "💡 *Ejemplo:* `$500 - $300.50 - 4500` o `500_300,50_4500`"
         )
     else:
-        await update.message.reply_text("⚠️ Tipo de reporte no válido. Por favor selecciona una opción del menú.")
+        await update.message.reply_text(
+            "⚠️ Tipo de reporte no válido. Por favor selecciona una opción del menú.",
+            reply_markup=SupervisorKeyboards.obtener_teclado_tipos_reporte()
+        )
         return ESTADO_SELECCIONAR_TIPO_REPORTE_SUP
 
     await update.message.reply_text(
         instrucciones,
-        reply_markup=ReplyKeyboardRemove(),
+        reply_markup=BotKeyboards.obtener_teclado_salir(),
         parse_mode="Markdown"
     )
     return ESTADO_PROCESAR_DATOS_REPORTE_SUP
@@ -1184,8 +1207,9 @@ admin_conversacion_handler = ConversationHandler(
         ],
         ESTADO_REPORTE_RAFAGA: [
             MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), iniciar_reporte_rafaga_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU]), iniciar_menu_principal),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler),
         ],
         ESTADO_CONFIRMACION_REPORTE_SUP: [
             MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
