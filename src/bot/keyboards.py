@@ -10,6 +10,10 @@ class BotKeyboards:
     REPORTE_COBRANZA = "💵 Reportar Cobranza"
     REPORTE_RAFAGA = "⚡️ Reporte Ráfaga"
     MI_RENDIMIENTO = "📊 Mi Rendimiento"
+    AYUDA = "❓ Ayuda / Instrucciones"
+    AYUDA_REPORTE = "📘 Ayuda - Reportes"
+    AYUDA_RAFAGA = "⚡️ Ayuda - Reporte Ráfaga"
+    AYUDA_RENDIMIENTO = "📊 Ayuda - Rendimiento"
     
     FINALIZAR_RAFAGA = "🏁 Finalizar Ráfaga"
     
@@ -37,7 +41,7 @@ class BotKeyboards:
         botones = [
             [KeyboardButton(cls.TURNO_MANANA), KeyboardButton(cls.TURNO_NOCHE)],
             [KeyboardButton(cls.REPORTE_COBRANZA), KeyboardButton(cls.REPORTE_RAFAGA)],
-            [KeyboardButton(cls.MI_RENDIMIENTO)]
+            [KeyboardButton(cls.AYUDA), KeyboardButton(cls.MI_RENDIMIENTO)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)
 
@@ -90,6 +94,24 @@ class BotKeyboards:
         return ReplyKeyboardMarkup(botones, resize_keyboard=True, one_time_keyboard=True)
 
     @classmethod
+    def obtener_teclado_ayuda(cls) -> ReplyKeyboardMarkup:
+        """Menú de ayuda con las categorías clave del bot."""
+        botones = [
+            [KeyboardButton(cls.AYUDA_REPORTE), KeyboardButton(cls.AYUDA_RAFAGA)],
+            [KeyboardButton(cls.AYUDA_RENDIMIENTO), KeyboardButton(cls.SALIR_MENU)]
+        ]
+        return ReplyKeyboardMarkup(botones, resize_keyboard=True, one_time_keyboard=True)
+
+    @classmethod
+    def obtener_teclado_ayuda_volver(cls) -> ReplyKeyboardMarkup:
+        """Teclado simple para volver al menú principal desde ayuda."""
+        return ReplyKeyboardMarkup(
+            [[KeyboardButton(cls.SALIR_MENU)]],
+            resize_keyboard=True,
+            one_time_keyboard=True
+        )
+
+    @classmethod
     def obtener_teclado_salir(cls) -> ReplyKeyboardMarkup:
         """Teclado visible para abandonar cualquier flujo activo."""
         return ReplyKeyboardMarkup(
@@ -119,6 +141,8 @@ class SupervisorKeyboards:
     CUOTA_MASIVA = "✏️ Registrar o Editar cuotas"
     CUOTA_TODOS_VENDEDORES = "📊 Ver cuotas de vendedores"
     SINCRONIZACION = "🔄 Sincronizar Excel automaticamente"
+    BACKUP_DB = "💾 Hacer Backup de Base de Datos"
+    
 
     # --- SUBMENÚ PERSONAL (NIVEL 2) ---
     VER_SOLICITUDES = "📩 Solicitudes Pendientes"
@@ -127,7 +151,8 @@ class SupervisorKeyboards:
 
     # --- SUBMENÚ INGESTIÓN MANUAL (NIVEL 2) ---
     CARGA_INDIVIDUAL = "📝 Reporte Manual Individual"
-    CARGA_RAFAGA_SUP = "⚡️ Reporte Manual Ráfaga"
+    CARGA_RAFAGA_SUP = "⚡️ Reporte Manual Automatico"
+    REPORTE_MULTIPLE = "📦 Reportes Múltiples"
     CARGAR_OTRO_REPORTE = "📋 Cargar otro reporte"
 # Constantes para Tipos de Reportes
     TIPO_PLAN_DIA = "📋 Plan del Día"
@@ -178,7 +203,7 @@ class SupervisorKeyboards:
     def obtener_sub_cuotas(cls) -> ReplyKeyboardMarkup:
         botones = [
             [KeyboardButton(cls.CUOTA_MASIVA), KeyboardButton(cls.CUOTA_TODOS_VENDEDORES)],
-            [KeyboardButton(cls.SINCRONIZACION)],
+            [KeyboardButton(cls.SINCRONIZACION), KeyboardButton(cls.BACKUP_DB)],
             [KeyboardButton(cls.VOLVER_MENU)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)
@@ -197,6 +222,7 @@ class SupervisorKeyboards:
     def obtener_sub_ingestion(cls) -> ReplyKeyboardMarkup:
         botones = [
             [KeyboardButton(cls.CARGA_INDIVIDUAL), KeyboardButton(cls.CARGA_RAFAGA_SUP)],
+            [KeyboardButton(cls.REPORTE_MULTIPLE)],
             [KeyboardButton(cls.VOLVER_MENU)]
         ]
         return ReplyKeyboardMarkup(botones, resize_keyboard=True)

@@ -18,6 +18,7 @@ class Config:
         self.dropbox_refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
         
         
+        
         if not self.gemini_key or not self.telegram_token or not self.dropbox_key or not self.dropbox_secret or not self.dropbox_refresh_token:
             self.logger.registrar_log("ERROR", "Faltan variables críticas en el archivo .env")
         else:

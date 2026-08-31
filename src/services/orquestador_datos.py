@@ -115,7 +115,9 @@ class OrquestadorDatos:
             monto_cobrado_bd = self.repo.obtener_total_cobrado_ruta_fecha(ruta, fecha_op) or real_cobranza
 
             if monto_cobrado_bd > 0:
+            
                 lote_cobros = {ruta: monto_cobrado_bd}
+                print(f"📦 [Orquestador] Inyectando Cobranza Acumulada en Excel para Ruta {ruta} el {fecha_op}: ${monto_cobrado_bd}")
                 self.excel.actualizar_cobranza_acumulada_excel(lote_cobros=lote_cobros, fecha_str=fecha_op)
 
             return True

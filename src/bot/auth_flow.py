@@ -17,7 +17,7 @@ logger = LogsRepository(conector)
 
 # Estados del Registro
 ESTADO_REGISTRO_RUTA, ESTADO_REGISTRO_NOMBRE = range(10, 12)
-RUTAS_VALIDAS = [10, 15, 13, 17, 21, 26, 30, 32, 39]
+RUTAS_VALIDAS = [10, 15, 17, 21, 26, 30, 32, 39]
 
 # ==========================================
 #       FUNCIONES AUXILIARES DE LIMPIEZA
@@ -63,11 +63,13 @@ async def iniciar_registro_flow(update: Update, context: ContextTypes.DEFAULT_TY
         if estado == "AUTORIZADO":
             
             # Si ya está autorizado, mostrar su menú de vendedor
-            await update.message.reply_text(
-                f"👋 ¡Hola de nuevo, **{usr['nombre']}**! (Ruta {usr['ruta']})\n\n"
-                f"Selecciona una opción del menú para comenzar.",
+            await update.message.reply_text(f"""
+👋 <b>¡Hola de nuevo, {usr['nombre']}!</b> <i>(Ruta {usr['ruta']})</i>
+
+Por favor, seleccione una opción del menú inferior para comenzar la jornada:
+""",
                 reply_markup=BotKeyboards.obtener_teclado_vendedor(),
-                parse_mode="Markdown"
+                parse_mode="HTML"
             )
             return ConversationHandler.END
             
@@ -79,29 +81,45 @@ async def iniciar_registro_flow(update: Update, context: ContextTypes.DEFAULT_TY
             )
             return ConversationHandler.END
 
+        elif estado == "BLOQUEADO":
+            await update.message.reply_text(
+                f"🚫 Tu acceso para la **Ruta {usr['ruta']}** ha sido **BLOQUEADO**.\n\n"
+                f"Si crees que esto es un error, contacta al supervisor para revisar tu caso.",
+                parse_mode="Markdown"
+            )
+            return ConversationHandler.END
+
     # 2. Si no existe, arrancar el flujo de registro
     teclado_rutas = BotKeyboards.obtener_teclado_rutas(conector)
     
     await update.message.reply_text(
-        "🛢️ **¡BIENVENIDO AL BOT DE DISULUBINCA!**\n\n"
-        "Para configurar tu perfil de vendedor, por favor **selecciona tu número de Ruta**:",
+        "🛢️ *¡BIENVENIDO AL SISTEMA DE REPORTES DISULUBINCA!*\n"
+    "Para configurar su perfil, seleccione su número de Ruta comercial:",
         reply_markup=teclado_rutas,
         parse_mode="Markdown"
     )
     return ESTADO_REGISTRO_RUTA
 
 
-async def reiniciar_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Limpia el estado actual y vuelve a mostrar el menú adecuado."""
+async def salir_al_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cierra el flujo activo y vuelve al menú correcto del usuario."""
     context.user_data.clear()
     await iniciar_registro_flow(update, context)
     return ConversationHandler.END
 
 
+async def reiniciar_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Compatibilidad: mantiene la salida al menú principal del flujo actual."""
+    return await salir_al_menu_handler(update, context)
+
+
 async def reiniciar_registro_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Reinicia el menú conservando el estado de registro si hace falta."""
+    """Resetea de forma segura cualquier flujo activo y vuelve al inicio del registro."""
     context.user_data.clear()
-    return await iniciar_registro_flow(update, context)
+
+    context.user_data.clear()
+    await iniciar_registro_flow(update, context)
+    return ConversationHandler.END
 
 async def registro_ruta_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Captura y valida la ruta seleccionada."""
@@ -188,15 +206,15 @@ auth_conversacion_handler = ConversationHandler(
         CommandHandler("menu", iniciar_registro_flow),
         CommandHandler("inicio", iniciar_registro_flow),
         CommandHandler("hola", iniciar_registro_flow),
-        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
     ],
     states={
         ESTADO_REGISTRO_RUTA: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, registro_ruta_handler)
         ],
         ESTADO_REGISTRO_NOMBRE: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, registro_nombre_handler)
         ]
     },
@@ -204,6 +222,6 @@ auth_conversacion_handler = ConversationHandler(
         CommandHandler("menu", reiniciar_registro_handler),
         CommandHandler("inicio", reiniciar_registro_handler),
         CommandHandler("hola", reiniciar_registro_handler),
-        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_registro_handler)
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler)
     ]
 )

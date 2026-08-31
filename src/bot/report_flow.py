@@ -68,19 +68,23 @@ async def iniciar_reporte_handler(update: Update, context: ContextTypes.DEFAULT_
     if texto_boton == BotKeyboards.TURNO_MANANA:
         modo_txt = "Plan Matutino"
     elif texto_boton == BotKeyboards.TURNO_NOCHE:
-        modo_txt = "Cierre Nocturno Completo"
+        modo_txt = "Cierre Nocturno"
     else:
-        modo_txt = "Reporte Individual de Cobranza y Caja"
+        modo_txt = "Cobranza"
 
+    html_solicitud = f"""
+📝 <b>REPORTE — {modo_txt.upper()}</b>
+📍 <b>Ruta asignada:</b> Ruta {usr['ruta']}
+
+Por favor, describa la relación de su planificación de trabajo para el día de hoy (Metas UDVD, Visitas, CxC y Grupo Amigo/Celta).
+
+ℹ️ <i>Nota: El sistema registrará la información con la fecha actual de forma automática. Si desea reportar una fecha distinta, especifíquela explícitamente en el texto.</i>
+""".strip()
+    
     await update.message.reply_text(
-        f"☀️ **REGISTRO DE ({modo_txt.upper()})**\n\n"
-        f"📍 **Ruta asignada:** Ruta {usr['ruta']}\n\n"
-        f"Por favor, **ingrese o pegue el desglose de su planificación** para el día de hoy.\n\n"
-        f"📌 **Nota de Fecha:**\n"
-        f"• Por defecto, el sistema procesará la información con la **fecha de hoy**.\n"
-        f"• Si está reportando una fecha distinta o ajuste, asegúrese de **especificar la fecha** explícitamente en el texto enviado.",
+        html_solicitud,
         reply_markup=BotKeyboards.obtener_teclado_salir(),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     return ESTADO_TEXTO_REPORTE
 
@@ -115,7 +119,7 @@ async def procesar_texto_whatsapp_handler(update: Update, context: ContextTypes.
 
     texto_para_ia = f"{contexto_intencion}{texto_raw}"
 
-    await update.message.reply_text("⏳ *DislubinBot esta procesando reporte ... Por favor espera.*", parse_mode="Markdown")
+    await update.message.reply_text("⏳ *DislubinBot esta procesando reporte ... El sistema le notificarán al finalizar.*", parse_mode="Markdown")
 
     resultado_ia = parser_ia.parsear_texto_libre(texto_para_ia)
 
@@ -126,25 +130,26 @@ async def procesar_texto_whatsapp_handler(update: Update, context: ContextTypes.
         # Manejo diferenciado según la causa del error
         if "API Key" in error_detalle or "genai.Client" in error_detalle:
             mensaje_usuario = (
-                "🚨 **Servicio no disponible momentáneamente.**\n\n"
-                "Estamos experimentando problemas con el analizador. Por favor, notifica a tu supervisor."
+                "🚨 <b>Servicio de IA no disponible.</b>\n\n"
+                "El servicio no está configurado correctamente (API Key ausente o inválida). Notifique al administrador del sistema."
             )
         elif "JSON" in error_detalle:
             mensaje_usuario = (
-                "⚠️ **No pude entender los datos de tu reporte.**\n\n"
-                "Asegúrate de incluir la información clara (ej: UDVD, cobranza o métodos de pago).\n\n"
-                "💡 *Intenta enviar el texto nuevamente o escribe `/cancelar` para reintentar.*"
+                "⚠️ <b>No se pudo interpretar el reporte.</b>\n\n"
+                "Asegúrese de enviar un texto con los montos, unidades o metas estructuradas.\n\n"
+                "💡 <i>Envíe <code>/cancelar</code> para regresar al menú.</i>"
             )
         else:
             mensaje_usuario = (
-                "⚠️ **Ocurrió un detalle al procesar tu mensaje.**\n\n"
-                "Por favor, revisa el texto enviado o usa `/cancelar` para volver a empezar."
+                "🚦 <b>Sistema con alto volumen de solicitudes.</b>\n\n"
+                "En este momento estamos experimentando un alto tráfico de reportes. Su mensaje no pudo ser procesado.\n\n"
+                "💡 <i>Por favor, espere un par de minutos e intente nuevamente o envíe <code>/cancelar</code> para reiniciar.</i>"
             )
 
         await update.message.reply_text(
             mensaje_usuario,
             reply_markup=BotKeyboards.obtener_teclado_vendedor(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         return ConversationHandler.END
 
@@ -169,6 +174,8 @@ async def procesar_texto_whatsapp_handler(update: Update, context: ContextTypes.
             f"📦 **Meta UDVD:** {resultado_ia.get('meta_udvd', 0)} UDVD\n"
             f"💵 **Meta Cobranza:** ${float(resultado_ia.get('meta_cxc', 0.0)):,.2f}\n"
             f"🎯 **Meta Visitas:** {resultado_ia.get('meta_activaciones', 0)}\n"
+            f"👥 **Meta Grupo Amigo:** {resultado_ia.get('meta_amigo', 0)}\n"
+            f"🚗 **Meta Grupo Celta:** {resultado_ia.get('meta_celta', 0)}\n"
         )
     elif es_solo_cobranza:
         resumen_txt = (
@@ -188,11 +195,13 @@ async def procesar_texto_whatsapp_handler(update: Update, context: ContextTypes.
             f"📦 **Venta Real UDVD:** {resultado_ia.get('real_udvd', 0)} UDVD\n"
             f"💵 **Cobranza Real:** ${float(resultado_ia.get('real_cxc', 0.0)):,.2f}\n"
             f"🎯 **Visitas Logradas:** {resultado_ia.get('real_activaciones', 0)}\n\n"
-            f"💰 **DESGLOSE DE CAJA:**\n"
-            f"• Efectivo ($): ${float(resultado_ia.get('efectivo_usd', 0.0)):,.2f}\n"
-            f"• Transferencia/Zelle ($): ${float(resultado_ia.get('zelle_usd', 0.0)):,.2f}\n"
-            f"• Bolívares Cambiados ($): ${float(resultado_ia.get('bs_cambiados_usd', 0.0)):,.2f}\n"
-            f"• Tasa BCV: {float(resultado_ia.get('tasa_bcv', 0.0))} Bs/$\n"
+            f"👥 **Grupo Amigo:** {resultado_ia.get('real_amigo', 0)}\n"
+            f"🚗 **Grupo Celta:** {resultado_ia.get('real_celta', 0)}\n"
+            # f"💰 **DESGLOSE DE CAJA:**\n"
+            # f"• Efectivo ($): ${float(resultado_ia.get('efectivo_usd', 0.0)):,.2f}\n"
+            # f"• Transferencia/Zelle ($): ${float(resultado_ia.get('zelle_usd', 0.0)):,.2f}\n"
+            # f"• Bolívares Cambiados ($): ${float(resultado_ia.get('bs_cambiados_usd', 0.0)):,.2f}\n"
+            # f"• Tasa BCV: {float(resultado_ia.get('tasa_bcv', 0.0))} Bs/$\n"
         )
 
     resumen_txt += "\n¿Los datos extraídos son correctos?"
@@ -295,25 +304,26 @@ async def procesar_rafaga_acumulada(update: Update, context: ContextTypes.DEFAUL
         # Manejo diferenciado según la causa del error
         if "API Key" in error_detalle or "genai.Client" in error_detalle:
             mensaje_usuario = (
-                "🚨 **Servicio no disponible momentáneamente.**\n\n"
-                "Estamos experimentando problemas con el analizador. Por favor, notifica a tu supervisor."
+                "🚨 <b>Servicio de IA no disponible.</b>\n\n"
+                "El servicio no está configurado correctamente (API Key ausente o inválida). Notifique al administrador del sistema."
             )
         elif "JSON" in error_detalle:
             mensaje_usuario = (
-                "⚠️ **No pude entender los datos de tu reporte.**\n\n"
-                "Asegúrate de incluir la información clara (ej: UDVD, cobranza o métodos de pago).\n\n"
-                "💡 *Intenta enviar el texto nuevamente o escribe `/cancelar` para reintentar.*"
+                "⚠️ <b>No se pudo interpretar el reporte.</b>\n\n"
+                "Asegúrese de enviar un texto con los montos, unidades o metas estructuradas.\n\n"
+                "💡 <i>Envíe <code>/cancelar</code> para regresar al menú.</i>"
             )
         else:
             mensaje_usuario = (
-                "⚠️ **Ocurrió un detalle al procesar tu mensaje.**\n\n"
-                "Por favor, revisa el texto enviado o usa `/cancelar` para volver a empezar."
+                "🚦 <b>Sistema con alto volumen de solicitudes.</b>\n\n"
+                "En este momento estamos experimentando un alto tráfico de reportes. Su mensaje no pudo ser procesado.\n\n"
+                "💡 <i>Por favor, espere un par de minutos e intente nuevamente o envíe <code>/cancelar</code> para reiniciar.</i>"
             )
 
         await update.message.reply_text(
             mensaje_usuario,
             reply_markup=BotKeyboards.obtener_teclado_vendedor(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
         return ConversationHandler.END
 
@@ -370,7 +380,7 @@ async def confirmacion_guardado_handler(update: Update, context: ContextTypes.DE
 
     if decision == BotKeyboards.CONFIRMAR or decision == BotKeyboards.SI:
         await update.message.reply_text(
-            "⏳ *Guardando en la base de datos local y sincronizando en Dropbox...*",
+            "⏳ *Carga procesándose en segundo plano. El sistema le notificarán al finalizar.*",
             parse_mode="Markdown"
         )
 
@@ -427,6 +437,15 @@ async def confirmacion_guardado_handler(update: Update, context: ContextTypes.DE
     return ConversationHandler.END
 
 
+async def salir_al_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Finaliza el flujo actual y devuelve al menú principal del usuario."""
+    context.user_data.clear()
+    if "_conversation_state" in context.user_data:
+        del context.user_data["_conversation_state"]
+    await reiniciar_menu_handler(update, context)
+    return ConversationHandler.END
+
+
 async def cancelar_flujo_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data.clear()
     await update.message.reply_text(
@@ -456,16 +475,16 @@ reporte_conversacion_handler = ConversationHandler(
     ],
     states={
         ESTADO_TEXTO_REPORTE: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_texto_whatsapp_handler)
         ],
         ESTADO_ACUMULANDO_RAFAGA: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
             MessageHandler(filters.Text([BotKeyboards.FINALIZAR_RAFAGA]), finalizar_rafaga_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, acumular_mensaje_rafaga_handler)
         ],
         ESTADO_CONFIRMACION_REPORTE: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler),
             MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.SI, BotKeyboards.NO, BotKeyboards.CANCELAR]), confirmacion_guardado_handler)
         ]
     },
@@ -474,6 +493,9 @@ reporte_conversacion_handler = ConversationHandler(
         CommandHandler("menu", reiniciar_menu_handler),
         CommandHandler("inicio", reiniciar_menu_handler),
         CommandHandler("hola", reiniciar_menu_handler),
-        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler)
-    ]
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_handler)
+    ],per_message=False,  # Mantiene la conversación ligada al usuario/chat de forma estricta
+    per_user=True,
+    per_chat=True,
+    allow_reentry=True  # 👈 PERMITE REENTRAR AL FLUJO AUNQUE NO HAYA TERMINADO OFICIALMENTE EL ANTERIO
 )

@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 import re
 
@@ -41,12 +42,13 @@ parser_ia = IAParser()
     ESTADO_MONITOREO_VENDEDOR,
     ESTADO_CARGA_MASIVA,
     ESTADO_SI_NO,
-    ESTADO_REPORTE_RAFAGA,
+    ESTADO_REPORTE_AUTOMATICO,
+    ESTADO_REPORTE_MULTIPLE,
     ESTADO_CONFIRMACION_REPORTE_SUP,
     ESTADO_REPORTE_RUTA_SUP,
     ESTADO_SELECCIONAR_TIPO_REPORTE_SUP,
     ESTADO_PROCESAR_DATOS_REPORTE_SUP
-) = range(20, 28)
+) = range(20, 29)
 
 
 CANTIDAD_VALORES_REQUERIDOS = 5
@@ -55,6 +57,9 @@ CANTIDAD_VALORES_REQUERIDOS = 5
 # ========================================================
 # 🏠 NAVEGACIÓN Y MENÚS PRINCIPALES
 # ========================================================
+
+
+
 
 async def iniciar_menu_personal(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -103,6 +108,12 @@ async def iniciar_menu_principal(update: Update, context: ContextTypes.DEFAULT_T
     return ConversationHandler.END
 
 
+async def salir_al_menu_supervisor_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Cierra el flujo activo del supervisor y vuelve al menú principal."""
+    context.user_data.clear()
+    await iniciar_menu_principal(update, context)
+    return ConversationHandler.END
+
 
 async def iniciar_menu_coutas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -121,7 +132,8 @@ async def iniciar_menu_coutas(update: Update, context: ContextTypes.DEFAULT_TYPE
         "📌 **Opciones Disponibles:**\n"
         "• 🚀 **Carga Masiva de Cuotas:** Actualiza todas las rutas desde un archivo Excel.\n"
         "• ✏️ **Editar Cuota por Ruta:** Ajusta la cuota de una ruta específica.\n"
-        "• 🔄 **Sincronizar Excel automáticamente:** Configura la sincronización automática de cuotas.\n\n"
+        "• 🔄 **Sincronizar Excel automáticamente:** Configura la sincronización automática de cuotas.\n"
+        "• 💾 **Hacer Backup de Base de Datos:** Guarda una copia actual de usuarios.db en Dropbox.\n\n"
         "👇 *Selecciona una opción del menú inferior para continuar:*"
     )
 
@@ -130,6 +142,40 @@ async def iniciar_menu_coutas(update: Update, context: ContextTypes.DEFAULT_TYPE
         reply_markup=SupervisorKeyboards.obtener_sub_cuotas(),
         parse_mode="Markdown"
     )
+    return ConversationHandler.END
+
+
+async def backup_db_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Crea un respaldo manual de la base local SQLite y la sube a Dropbox."""
+    telegram_id = update.effective_user.id
+    if not usuarios_repo.es_administrador(telegram_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
+        return ConversationHandler.END
+
+    ruta_db = conector.db_path
+    if not ruta_db or not os.path.exists(ruta_db):
+        await update.message.reply_text(
+            "⚠️ No hay una base de datos local disponible para respaldar.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+        return ConversationHandler.END
+
+    ok = dropbox_service.respaldar_bd_local(ruta_db)
+    if ok:
+        await update.message.reply_text(
+            "✅ **Backup de base de datos completado**\n\n"
+            "La copia de usuarios.db fue enviada a Dropbox correctamente.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+    else:
+        await update.message.reply_text(
+            "❌ **No pude hacer el backup**\n\n"
+            "La base local existe, pero no se logró enviar la copia a Dropbox.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
     return ConversationHandler.END
 # ========================================================
 # ⚙️ FUNCIONALIDADES DEL SUBMENÚ PERSONAL
@@ -420,6 +466,12 @@ async def avance_mes_supervisor_handler(update: Update, context: ContextTypes.DE
     txt += f"• Logrado: {d.get('acumulado_udvd', 0):,.0f} UDVD\n"
     txt += f"• Progreso: `{b_udvd} {p_udvd:.1f}%`\n"
     txt += f"• Falta: {d.get('falta_udvd', 0):,.0f} UDVD\n\n"
+    
+    txt += f"💰 **COBRANZA TOTAL ($):**\n"
+    txt += f"• Meta Mes: {d.get('cuota_cxc', 0):,.0f} $\n"
+    txt += f"• Logrado: {d.get('acumulado_cxc', 0):,.0f} $\n"
+    txt += f"• Progreso: `{b_cxc} {p_cxc:.1f}%`\n"
+    txt += f"• Falta: {d.get('falta_cxc', 0):,.0f} $\n\n"
 
     await update.message.reply_text(txt, reply_markup=SupervisorKeyboards.obtener_volver_menu(), parse_mode="Markdown")
     return ConversationHandler.END
@@ -691,7 +743,7 @@ async def cuotas_todos_vendedores_handler(update: Update, context: ContextTypes.
 # 🤖 HANDLER Y REGISTRO DE EVENTOS
 # ========================================================
 
-async def iniciar_reporte_rafaga_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def iniciar_reporte_automatico_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Inicia el proceso de generación de un reporte en ráfaga para un supervisor.
     """
@@ -700,20 +752,176 @@ async def iniciar_reporte_rafaga_handler(update: Update, context: ContextTypes.D
         await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
+    html_solicitud_ia = """
+    ⚡ <b>GENERACIÓN DE REPORTE CON IA</b>
+
+    Ingrese el reporte con el mayor detalle posible para evitar errores de interpretación. El sistema procesará la información e impactará el registro de la jornada.
+
+    ℹ️ <i>Nota: El sistema registrará los datos con la fecha actual por defecto. Si está reportando una fecha distinta o un ajuste, asegúrese de especificarla explícitamente en el texto enviado.<b>No se olvide de especifificar la ruta</b></i>
+    """.strip()
+
     await update.message.reply_text(
-        "⚡ **GENERACIÓN DE REPORTE EN RÁFAGA**\n\n"
-        "Ingrese el reporte con lujo de detalles para evitar errores de interpretación. El sistema procesará la información y generará un reporte completo."
-        "• Si está reportando una fecha distinta o ajuste, asegúrese de **especificar la fecha** explícitamente en el texto enviado.",
-        parse_mode="Markdown",
-        reply_markup=SupervisorKeyboards.obtener_teclado_reintento()
+        html_solicitud_ia,
+        reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
+        parse_mode="HTML"
     )
-    return ESTADO_REPORTE_RAFAGA
+    return ESTADO_REPORTE_AUTOMATICO
 
 
+def _guardar_reporte_desde_payload(payload: dict, fecha_eval: str, ruta_id: int | str) -> tuple[bool, str]:
+    """Aplica el payload del reporte IA al sistema sin pedir confirmación adicional."""
+    tipo_intencion = str(payload.get("tipo_intencion", "")).upper()
+    es_matutino = "PLAN_MATUTINO" in tipo_intencion
+    es_solo_cobranza = "COBRANZA" in tipo_intencion
 
-async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        if es_matutino:
+            exito = orquestador.procesar_plan_matutino(
+                ruta=ruta_id,
+                meta_udvd=float(payload.get("meta_udvd", 0)),
+                meta_cobranza=float(payload.get("meta_cxc", 0.0)),
+                meta_activaciones=int(payload.get("meta_activaciones", 0)),
+                meta_amigo=float(payload.get("meta_amigo", 0.0)),
+                meta_celta=float(payload.get("meta_celta", 0.0)),
+                fecha_str=fecha_eval
+            )
+            return exito, "Plan matutino"
+
+        exito = orquestador.procesar_cierre_nocturno(
+            ruta=ruta_id,
+            real_udvd=float(payload.get("real_udvd", 0)),
+            real_cobranza=float(payload.get("real_cxc", 0.0)),
+            real_activaciones=int(payload.get("real_activaciones", 0)),
+            efectivo=float(payload.get("efectivo_usd", 0.0)),
+            zelle=float(payload.get("zelle_usd", 0.0)),
+            bs=float(payload.get("bs_cambiados_usd", 0.0)),
+            tasa_bcv=float(payload.get("tasa_bcv", 0.0)),
+            real_amigo=float(payload.get("real_amigo", 0.0)),
+            real_celta=float(payload.get("real_celta", 0.0)),
+            fecha_str=fecha_eval
+        )
+        return exito, "Cierre nocturno" if not es_solo_cobranza else "Cobranza"
+    except Exception as exc:
+        return False, f"Error técnico: {exc}"
+
+
+async def iniciar_reporte_multiple_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Activa un flujo de ingreso múltiple de reportes sin confirmaciones intermedias."""
+    telegram_id = update.effective_user.id
+    if not usuarios_repo.es_administrador(telegram_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
+        return ConversationHandler.END
+
+    context.user_data["reporte_multiple_total"] = 0
+    context.user_data["reporte_multiple_exitos"] = 0
+    context.user_data["reporte_multiple_errores"] = 0
+    context.user_data["reporte_multiple_detalles"] = []
+
+    await update.message.reply_text(
+        "📦 **MODO DE REPORTES MÚLTIPLES ACTIVADO**\n\n"
+        "Envía los reportes uno tras otro. El bot los procesará secuencialmente sin pedir confirmación intermedia.\n\n"
+        "🧭 Si quieres salir, usa el botón de volver al menú.\n"
+        "⚠️ Se aplicará un límite técnico prudente por seguridad.",
+        reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+        parse_mode="Markdown"
+    )
+    return ESTADO_REPORTE_MULTIPLE
+
+
+async def procesar_reporte_multiple_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Procesa un reporte del lote, mantiene el estado activo y si hay error sale al menú con información."""
+    telegram_id = update.effective_user.id
+    if not usuarios_repo.es_administrador(telegram_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
+        return ConversationHandler.END
+
+    texto = update.message.text or ""
+    if texto in (SupervisorKeyboards.VOLVER_MENU, BotKeyboards.SALIR_MENU, "⬅️ Volver al Menú Principal", "🏠 Volver al inicio"):
+        total = context.user_data.get("reporte_multiple_total", 0)
+        exitos = context.user_data.get("reporte_multiple_exitos", 0)
+        errores = context.user_data.get("reporte_multiple_errores", 0)
+        await update.message.reply_text(
+            f"📦 **Lote terminado**\n\n"
+            f"✅ Reportes exitosos: {exitos}\n"
+            f"❌ Reportes fallidos: {errores}\n"
+            f"📊 Total procesados: {total}",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+        context.user_data.clear()
+        return await iniciar_menu_principal(update, context)
+
+    maximo_reportes = 20
+    total_actual = context.user_data.get("reporte_multiple_total", 0)
+    if total_actual >= maximo_reportes:
+        await update.message.reply_text(
+            "⚠️ **Se alcanzó el límite técnico del lote**\n\n"
+            "Ya se procesó la máxima cantidad permitida. El flujo se cerró y puedes volver al menú principal.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+        context.user_data.clear()
+        return await iniciar_menu_principal(update, context)
+
+    numero_reporte = total_actual + 1
+    await update.message.reply_text(
+        f"⏳ Procesando reporte #{numero_reporte}...",
+        reply_markup=ReplyKeyboardRemove(),
+        parse_mode="Markdown"
+    )
+
+    resultado_ia = parser_ia.parsear_texto_libre(texto)
+    if not resultado_ia or not resultado_ia.get("exito", False):
+        detalle_error = resultado_ia.get("error", "No se recibió respuesta válida del analizador.") if resultado_ia else "Error desconocido"
+        context.user_data["reporte_multiple_errores"] = context.user_data.get("reporte_multiple_errores", 0) + 1
+        await update.message.reply_text(
+            f"❌ **Error en reporte #{numero_reporte}**\n\n"
+            f"{detalle_error}\n\n"
+            "El lote se detuvo y se informó al administrador. Vuelve al menú para continuar.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+        context.user_data.clear()
+        return await iniciar_menu_principal(update, context)
+
+    ruta_id = resultado_ia.get("ruta")
+    fecha_eval = resultado_ia.get("fecha_mencionada") or datetime.now().strftime("%Y-%m-%d")
+    ok, detalle = _guardar_reporte_desde_payload(resultado_ia, fecha_eval, ruta_id)
+
+    context.user_data["reporte_multiple_total"] = numero_reporte
+    if ok:
+        context.user_data["reporte_multiple_exitos"] = context.user_data.get("reporte_multiple_exitos", 0) + 1
+        detalle_lote = context.user_data.get("reporte_multiple_detalles", [])
+        detalle_lote.append({"ruta": ruta_id, "fecha": fecha_eval, "tipo": detalle})
+        context.user_data["reporte_multiple_detalles"] = detalle_lote
+
+        await update.message.reply_text(
+            f"✅ **Reporte #{numero_reporte} guardado correctamente**\n\n"
+            f"📍 Ruta: {ruta_id}\n"
+            f"📅 Fecha: {fecha_eval}\n"
+            f"🧾 Tipo: {detalle}\n\n"
+            f"📦 Lote activo: {numero_reporte} reportes recibidos.",
+            reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+            parse_mode="Markdown"
+        )
+        return ESTADO_REPORTE_MULTIPLE
+
+    context.user_data["reporte_multiple_errores"] = context.user_data.get("reporte_multiple_errores", 0) + 1
+    await update.message.reply_text(
+        f"❌ **No se pudo guardar el reporte #{numero_reporte}**\n\n"
+        f"📍 Ruta: {ruta_id}\n"
+        f"🚨 Detalle: {detalle}\n\n"
+        "El lote se detuvo para evitar procesar datos inconsistentes.",
+        reply_markup=SupervisorKeyboards.obtener_volver_menu(),
+        parse_mode="Markdown"
+    )
+    context.user_data.clear()
+    return await iniciar_menu_principal(update, context)
+
+
+async def procesar_reporte_automatico_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Procesa el reporte en ráfaga enviado por el supervisor.
+    Procesa el reporte en automatico enviado por el supervisor.
     """
     telegram_id = update.effective_user.id
     if not usuarios_repo.es_administrador(telegram_id):
@@ -725,7 +933,7 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
     await update.message.reply_text(
         "⏳ *DislubinBot esta procesando reporte ... Por favor espera.*",
         parse_mode="Markdown",
-        reply_markup=SupervisorKeyboards.obtener_teclado_reintento()
+        reply_markup=ReplyKeyboardRemove()
     )
     
     resultado_ia = parser_ia.parsear_texto_libre(reporte_texto)
@@ -738,29 +946,28 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
         # Evaluamos qué tipo de falla ocurrió para dar mejor retroalimentación
         if "API Key" in error_detalle or "genai.Client" in error_detalle:
             mensaje_usuario = (
-                "🚨 **Error del Sistema:**\n"
-                "El servicio de Inteligencia Artificial no está configurado correctamente (API Key ausente o inválida).\n\n"
-                "Por favor, notifica al administrador del sistema."
+                "🚨 <b>Servicio de IA no disponible.</b>\n\n"
+                "El servicio no está configurado correctamente (API Key ausente o inválida). Notifique al administrador del sistema."
             )
         elif "JSON" in error_detalle:
             mensaje_usuario = (
-                "⚠️ **No pude interpretar la estructura de tu mensaje.**\n\n"
-                "Asegúrate de enviar un texto con el formato habitual (incluyendo montos, unidades o cobranza claros).\n\n"
-                "💡 *Envía `/cancelar` para reintentar desde el menú.*"
+                "⚠️ <b>No se pudo interpretar el reporte.</b>\n\n"
+                "Asegúrese de enviar un texto con los montos, unidades o metas estructuradas.\n\n"
+                "💡 <i>Envíe <code>/cancelar</code> para regresar al menú.</i>"
             )
         else:
             mensaje_usuario = (
-                f"⚠️ **Hubo un problema procesando tu reporte:**\n"
-                f"`{error_detalle}`\n\n"
-                "Porfavor intente mas tarde."
+                "🚦 <b>Sistema con alto volumen de solicitudes.</b>\n\n"
+                "En este momento estamos experimentando un alto tráfico de reportes. Su mensaje no pudo ser procesado.\n\n"
+                "💡 <i>Por favor, espere un par de minutos e intente nuevamente o envíe <code>/cancelar</code> para reiniciar.</i>"
             )
 
         await update.message.reply_text(
             mensaje_usuario,
             reply_markup=SupervisorKeyboards.obtener_teclado_reintento(),
-            parse_mode="Markdown"
+            parse_mode="HTML"
         )
-        return ESTADO_REPORTE_RAFAGA
+        return ESTADO_REPORTE_AUTOMATICO
 
     context.user_data["payload_ia_sup"] = resultado_ia
     tipo_intencion = str(resultado_ia.get("tipo_intencion", "")).upper()
@@ -784,6 +991,9 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
             f"📦 **Meta UDVD:** {resultado_ia.get('meta_udvd', 0)} UDVD\n"
             f"💵 **Meta Cobranza:** ${float(resultado_ia.get('meta_cxc', 0.0)):,.2f}\n"
             f"🎯 **Meta Visitas:** {resultado_ia.get('meta_activaciones', 0)}\n"
+            f"💰 **Meta Amigo:** ${float(resultado_ia.get('meta_amigo', 0.0)):,.2f}\n"
+            f"🚗 **Meta Celta:** ${float(resultado_ia.get('meta_celta',0.0)):,.2f}\n"
+            
         )
     elif es_solo_cobranza:
         resumen_txt = (
@@ -803,11 +1013,14 @@ async def procesar_reporte_rafaga_handler(update: Update, context: ContextTypes.
             f"📦 **Venta Real UDVD:** {resultado_ia.get('real_udvd', 0)} UDVD\n"
             f"💵 **Cobranza Real:** ${float(resultado_ia.get('real_cxc', 0.0)):,.2f}\n"
             f"🎯 **Visitas Logradas:** {resultado_ia.get('real_activaciones', 0)}\n\n"
-            f"💰 **DESGLOSE DE CAJA:**\n"
-            f"• Efectivo ($): ${float(resultado_ia.get('efectivo_usd', 0.0)):,.2f}\n"
-            f"• Transferencia/Zelle ($): ${float(resultado_ia.get('zelle_usd', 0.0)):,.2f}\n"
-            f"• Bolívares Cambiados ($): ${float(resultado_ia.get('bs_cambiados_usd', 0.0)):,.2f}\n"
-            f"• Tasa BCV: {float(resultado_ia.get('tasa_bcv', 0.0))} Bs/$\n"
+            
+            # f"💰 **DESGLOSE DE CAJA:**\n"
+            # f"• Efectivo ($): ${float(resultado_ia.get('efectivo_usd', 0.0)):,.2f}\n"
+            # f"• Transferencia/Zelle ($): ${float(resultado_ia.get('zelle_usd', 0.0)):,.2f}\n"
+            # f"• Bolívares Cambiados ($): ${float(resultado_ia.get('bs_cambiados_usd', 0.0)):,.2f}\n"
+            # f"• Tasa BCV: {float(resultado_ia.get('tasa_bcv', 0.0))} Bs/$\n"
+            f"💰 **Meta Grupo Amigo:** ${float(resultado_ia.get('real_amigo', 0.0)):,.2f}\n"
+            f"🚗 **Meta Celta:** ${float(resultado_ia.get('real_celta',0.0)):,.2f}\n"
         )
 
     resumen_txt += "\n¿Los datos extraídos son correctos?"
@@ -1027,6 +1240,8 @@ async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFA
             "1. UDVD planeadas\n"
             "2. CxC planeadas\n"
             "3. Visitas planeadas\n\n"
+            "4. Unidades Grupo Amigo planeadas\n"
+            "5. Unidades Celta planeadas\n"
             "💡 *Ejemplo:* `150 - 2500 - 12` o `150_2500_12`"
         )
     elif tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
@@ -1036,6 +1251,8 @@ async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFA
             "1. UDVD conseguidas\n"
             "2. CxC conseguidas\n"
             "3. Visitas conseguidas\n\n"
+            "4. Unidades Grupo Amigo conseguidas\n"
+            "5. Unidades Celta conseguidas\n"
             "💡 *Ejemplo:* `140 - 2300,50 - 10` o `140 / 2300.50 / 10`"
         )
     elif tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
@@ -1176,11 +1393,13 @@ admin_conversacion_handler = ConversationHandler(
         MessageHandler(filters.Text([SupervisorKeyboards.CUOTA_MASIVA, "✏️ Registrar o Editar cuotas"]), pedir_carga_masiva_cuotas_handler),
         MessageHandler(filters.Text([SupervisorKeyboards.CUOTA_TODOS_VENDEDORES, "📊 Ver cuotas de vendedores"]), cuotas_todos_vendedores_handler),
         MessageHandler(filters.Text([SupervisorKeyboards.SINCRONIZACION, "🔄 Sincronizar Excel automáticamente"]), pedir_confirmacion_handler),
+        MessageHandler(filters.Text([SupervisorKeyboards.BACKUP_DB, "💾 Hacer Backup de Base de Datos"]), backup_db_handler),
 
         
         MessageHandler(filters.Text([SupervisorKeyboards.INGESTION]), iniciar_menu_reportes),
         MessageHandler(filters.Text([SupervisorKeyboards.CARGA_INDIVIDUAL]), seleccionar_reporte_ruta_handler),
-        MessageHandler(filters.Text([SupervisorKeyboards.CARGA_RAFAGA_SUP]), iniciar_reporte_rafaga_handler),
+        MessageHandler(filters.Text([SupervisorKeyboards.CARGA_RAFAGA_SUP]), iniciar_reporte_automatico_handler),
+        MessageHandler(filters.Text([SupervisorKeyboards.REPORTE_MULTIPLE]), iniciar_reporte_multiple_handler),
         # Reutiliza estatus_vendedores_handler
         # MessageHandler(filters.Text([SupervisorKeyboards.CUADRE_COBRANZA, "💰 Cuadre Cobranza"]), cuadre_cobranza_handler),
 
@@ -1189,49 +1408,54 @@ admin_conversacion_handler = ConversationHandler(
     ],
     states={
         ESTADO_MONITOREO_VENDEDOR: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, avence_por_ruta_handle)
         ],
         ESTADO_CARGA_MASIVA: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_carga_masiva_cuotas_handle)
         ],
         ESTADO_SI_NO: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Regex("^(Sí|si|SI|sí)$"), sincronizar_excel),
             MessageHandler(filters.Text([BotKeyboards.SI]), sincronizar_excel),
             MessageHandler(filters.Regex("^(No|no|NO)$"), iniciar_menu_coutas),
             MessageHandler(filters.Text([BotKeyboards.NO]), iniciar_menu_coutas)
         # Manejo de respuesta inesperada  
         ],
-        ESTADO_REPORTE_RAFAGA: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
-            MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), iniciar_reporte_rafaga_handler),
+        ESTADO_REPORTE_AUTOMATICO: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), iniciar_reporte_automatico_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU]), iniciar_menu_principal),
-            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_rafaga_handler),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_automatico_handler),
+        ],
+        ESTADO_REPORTE_MULTIPLE: [
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal", "⬅️ Volver"]), iniciar_menu_principal),
+            MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_reporte_multiple_handler),
         ],
         ESTADO_CONFIRMACION_REPORTE_SUP: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Text([BotKeyboards.CONFIRMAR, BotKeyboards.CANCELAR, BotKeyboards.NO, BotKeyboards.SI]), confirmacion_guardado_sup_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
-            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler)
+            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_automatico_handler)
         ],
         ESTADO_REPORTE_RUTA_SUP: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, seleccionar_tipo_reporte_handler)
         ],
         ESTADO_SELECCIONAR_TIPO_REPORTE_SUP: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, pedir_datos_reporte_handler)
         ],
         ESTADO_PROCESAR_DATOS_REPORTE_SUP: [
-            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+            MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
             MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_datos_reporte_handler),
-            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_rafaga_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.CARGAR_OTRO_REPORTE]), iniciar_reporte_automatico_handler),
      
         ]
     },
@@ -1239,8 +1463,12 @@ admin_conversacion_handler = ConversationHandler(
         CommandHandler("menu", reiniciar_menu_handler),
         CommandHandler("inicio", reiniciar_menu_handler),
         CommandHandler("hola", reiniciar_menu_handler),
-        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), reiniciar_menu_handler),
+        MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
         MessageHandler(filters.Text([SupervisorKeyboards.VOLVER_MENU, "🔙 Volver al Menú Principal"]), iniciar_menu_principal)
     ],
+    per_message=False,
+    allow_reentry=True,
+    per_user=True,
+    per_chat=True,
     
 )

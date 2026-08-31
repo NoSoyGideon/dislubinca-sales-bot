@@ -47,8 +47,8 @@ class ContactoMatutinoMap:
 
     # 💵 Matriz de Relevo de Cobranza Semanal
     COLUMNA_BUSQUEDA_RUTA = "P"
-    FILA_INICIO_RUTAS = 9
-    FILA_FIN_RUTAS = 20
+    FILA_INICIO_RUTAS = 10
+    FILA_FIN_RUTAS = 27
 
     COLUMNAS_DIAS_COBRANZA = {
         

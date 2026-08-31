@@ -1,6 +1,7 @@
 # src/services/dropbox_service.py
 
 import os
+import shutil
 import dropbox
 from dropbox.exceptions import AuthError, ApiError
 from dropbox.files import WriteMode
@@ -141,4 +142,72 @@ class DropboxService:
             msg = f"Error inesperado al descargar ({ruta_dropbox}): {e}"
             print(f"❌ {msg}")
             self.logger.registrar_log("ERROR", msg)
+            return False
+
+    def respaldar_bd_local(self, ruta_local_db: str, ruta_dropbox: str = "backups/usuarios.db") -> bool:
+        """Copia la base SQLite local a Dropbox como respaldo de producción."""
+        if not os.path.exists(ruta_local_db):
+            print(f"⚠️ [Dropbox] No existe la base local para respaldar: {ruta_local_db}")
+            return False
+
+        if not self.dbx:
+            self._conectar()
+            if not self.dbx:
+                return False
+
+        try:
+            with open(ruta_local_db, "rb") as archivo:
+                contenido = archivo.read()
+
+            if not ruta_dropbox.startswith("/"):
+                ruta_dropbox = f"/{ruta_dropbox.lstrip('/')}"
+
+            self.dbx.files_upload(contenido, ruta_dropbox, mode=WriteMode.overwrite)
+            print(f"💾 [Dropbox] Respaldo realizado correctamente en {ruta_dropbox}")
+            self.logger.registrar_log("INFO", f"Base de datos respaldada en Dropbox: {ruta_dropbox}")
+            return True
+        except Exception as e:
+            msg = f"No se pudo respaldar la base de datos en Dropbox: {e}"
+            print(f"❌ {msg}")
+            self.logger.registrar_log("ERROR", msg)
+            return False
+
+    def restaurar_bd_desde_dropbox(self, ruta_local_db: str, ruta_dropbox: str = "backups/usuarios.db") -> bool:
+        """Descarga el respaldo de Dropbox a la base local si existe."""
+        if not self.dbx:
+            self._conectar()
+            if not self.dbx:
+                return False
+
+        if not ruta_dropbox.startswith("/"):
+            ruta_dropbox = f"/{ruta_dropbox.lstrip('/')}"
+
+        os.makedirs(os.path.dirname(os.path.abspath(ruta_local_db)), exist_ok=True)
+        destino_temporal = f"{ruta_local_db}.tmp"
+
+        try:
+            self.dbx.files_download_to_file(destino_temporal, ruta_dropbox)
+            if os.path.exists(ruta_local_db):
+                respaldo_anterior = f"{ruta_local_db}.bak"
+                if os.path.exists(respaldo_anterior):
+                    os.remove(respaldo_anterior)
+                shutil.copy2(ruta_local_db, respaldo_anterior)
+            os.replace(destino_temporal, ruta_local_db)
+            print(f"📥 [Dropbox] Base de datos restaurada localmente desde {ruta_dropbox}")
+            self.logger.registrar_log("INFO", f"Base de datos restaurada desde Dropbox: {ruta_dropbox}")
+            return True
+        except ApiError as e:
+            if e.error.is_path() and e.error.get_path().is_not_found():
+                print(f"⚠️ [Dropbox] No existe respaldo en la nube en {ruta_dropbox}; se usa la base local actual.")
+                return False
+            msg = f"Error al restaurar la base desde Dropbox: {e}"
+            print(f"❌ {msg}")
+            self.logger.registrar_log("ERROR", msg)
+            return False
+        except Exception as e:
+            msg = f"Error inesperado al restaurar la base desde Dropbox: {e}"
+            print(f"❌ {msg}")
+            self.logger.registrar_log("ERROR", msg)
+            if os.path.exists(destino_temporal):
+                os.remove(destino_temporal)
             return False
