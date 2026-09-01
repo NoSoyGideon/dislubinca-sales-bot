@@ -139,6 +139,18 @@ class DisulubincaBot:
         except Exception as exc:
             print(f"❌ [Scheduler] Error ejecutando backup nocturno: {exc}")
 
+    async def _sincronizacion_nocturna_job(self, context):
+        """Alinea Excel con SQLite cada noche a la 01:00 hora de Venezuela."""
+        try:
+            fecha_hoy = datetime.now(ZoneInfo("America/Caracas")).strftime("%Y-%m-%d")
+            ok = self.orquestador.ejecutar_sincronizacion_nocturna_excel(fecha_hoy)
+            if ok:
+                print("✅ [Scheduler] Sincronización nocturna Excel → SQLite ejecutada correctamente.")
+            else:
+                print("⚠️ [Scheduler] La sincronización nocturna Excel → SQLite terminó con warning/error.")
+        except Exception as exc:
+            print(f"❌ [Scheduler] Error ejecutando sincronización nocturna Excel → SQLite: {exc}")
+
     def _programar_mantenimiento_mensual(self, application):
         """Programa el mantenimiento el día 10 a las 02:00 de Venezuela."""
         zona_venezuela = ZoneInfo("America/Caracas")
@@ -147,6 +159,11 @@ class DisulubincaBot:
             when=time(hour=2, minute=0, tzinfo=zona_venezuela),
             day=10,
             name="mantenimiento_mensual"
+        )
+        application.job_queue.run_daily(
+            self._sincronizacion_nocturna_job,
+            time(hour=1, minute=0, tzinfo=zona_venezuela),
+            name="sincronizacion_nocturna_excel"
         )
         application.job_queue.run_daily(
             self._backup_db_job,

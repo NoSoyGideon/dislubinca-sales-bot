@@ -618,13 +618,18 @@ async def pedir_carga_masiva_cuotas_handler(update: Update, context: ContextType
         await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
 
-    await update.message.reply_text(
-        "🚀 **Registra o edita las cuotas**\n"
-        "━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-        "Por favor, escribe en un solo mensaje las difenretes cuotas de el mes que contiene las cuotas actualizadas para todas las rutas.\n\n",
+    html_solicitud_cuotas = """
+    🚀 <b>REGISTRO Y EDICIÓN DE CUOTAS MENSUALES</b>
 
-        parse_mode="Markdown",
-        reply_markup=BotKeyboards.obtener_teclado_salir()
+    Por favor, ingrese en un solo mensaje la relación de cuotas actualizadas para las rutas comerciales correspondientes al mes en curso.
+
+    ℹ️ <i>Ejemplo de formato: <code>Ruta 10: 1500 UDVD, 5000 CXC, 30 Visitas</code></i>
+    """.strip()
+
+    await update.message.reply_text(
+        html_solicitud_cuotas,
+        reply_markup=BotKeyboards.obtener_teclado_salir(),
+        parse_mode="HTML"
     )
     return ESTADO_CARGA_MASIVA
 
@@ -636,8 +641,14 @@ async def procesar_carga_masiva_cuotas_handle(update: Update, context: ContextTy
     if not usuarios_repo.es_administrador(telegram_id):
         await update.message.reply_text("❌ No tienes permisos de administrador.", reply_markup=BotKeyboards.obtener_teclado_salir())
         return ConversationHandler.END
-
     cuotas_texto = update.message.text
+    await update.message.reply_text(
+        "⏳ *DislubinBot esta procesando reporte ... Por favor espera.*",
+        parse_mode="Markdown",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    
+    
     resultado_ia = parser_ia.parsear_cuotas(cuotas_texto)
 
     # 1. Validar si la respuesta de la IA fue exitosa y trae cuotas
@@ -1414,6 +1425,7 @@ admin_conversacion_handler = ConversationHandler(
         ],
         ESTADO_CARGA_MASIVA: [
             MessageHandler(filters.Text([BotKeyboards.SALIR_MENU]), salir_al_menu_supervisor_handler),
+            MessageHandler(filters.Text([SupervisorKeyboards.REINTENTAR]), pedir_carga_masiva_cuotas_handler),
             MessageHandler(filters.TEXT & ~filters.COMMAND, procesar_carga_masiva_cuotas_handle)
         ],
         ESTADO_SI_NO: [

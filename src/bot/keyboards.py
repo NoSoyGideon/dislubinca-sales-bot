@@ -159,8 +159,7 @@ class SupervisorKeyboards:
     TIPO_CIERRE_NOCHE = "🌙 Cierre de Noche"
     TIPO_COBRANZA = "💵 Reporte de Cobranza"
 
-    # Botones de Reintento
-    REINTENTAR = "🔄 Volver a Intentar"
+
 
     @classmethod
     def obtener_teclado_tipos_reporte(cls) -> ReplyKeyboardMarkup:

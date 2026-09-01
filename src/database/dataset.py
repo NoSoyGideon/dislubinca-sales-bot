@@ -19,6 +19,7 @@ def poblar_vendedores_produccion():
     
     # Usaremos IDs únicos basados en la ruta para que no se dupliquen ni choquen bajo ninguna circunstancia
     vendedores = [
+        (None, "Giovanny Valbuena", 10, "VENDEDOR", "PENDIENTE",1),
         (None, "Rumaldo Medina", 15, "VENDEDOR", "PENDIENTE",1),
         (None, "Alfredo Struch", 17, "VENDEDOR", "PENDIENTE",1),
         (None, "Dayanara Marriaga", 21, "VENDEDOR", "PENDIENTE",1),
@@ -26,6 +27,7 @@ def poblar_vendedores_produccion():
         (None, "Rebeca Romero", 30, "VENDEDOR", "PENDIENTE",1),
         (None, "Mariedgar Martínez", 32, "VENDEDOR", "PENDIENTE",1),
         (None, "Carla Cardozo", 39, "VENDEDOR", "PENDIENTE",1),
+        (5048214687, "Miguel Marcano", 18, "SUPERVISOR", "AUTORIZADO",1),
         (6236041892, "Orlando Marcano", 13, "SUPERVISOR", "AUTORIZADO",1),
     ]
     

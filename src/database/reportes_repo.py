@@ -141,8 +141,41 @@ class ReportesRepository:
         finally:
             conexion.close()
 
+    def _obtener_total_udvd_periodo(self, periodo_str, ruta_id=None, campo='meta'):
+        """Suma consolidada UDVD + Grupo Amigo + Celta para el periodo solicitado."""
+        conexion = self.db.obtener_conexion()
+        cursor = conexion.cursor()
+
+        campo_udvd = 'meta_udvd' if campo == 'meta' else 'real_udvd'
+        campo_amigo = 'meta_amigo' if campo == 'meta' else 'real_amigo'
+        campo_celta = 'meta_celta' if campo == 'meta' else 'real_celta'
+
+        if ruta_id is None:
+            cursor.execute(f"""
+                SELECT COALESCE(SUM({campo_udvd}), 0.0)
+                     + COALESCE(SUM({campo_amigo}), 0.0)
+                     + COALESCE(SUM({campo_celta}), 0.0)
+                FROM operaciones_diarias
+                WHERE fecha LIKE ?
+            """, (f"{periodo_str}%",))
+        else:
+            cursor.execute(f"""
+                SELECT COALESCE(SUM({campo_udvd}), 0.0)
+                     + COALESCE(SUM({campo_amigo}), 0.0)
+                     + COALESCE(SUM({campo_celta}), 0.0)
+                FROM operaciones_diarias
+                WHERE fecha LIKE ? AND ruta_id = ?
+            """, (f"{periodo_str}%", int(ruta_id)))
+
+        resultado = cursor.fetchone()[0]
+        conexion.close()
+        return float(resultado) if resultado else 0.0
+
     def obtener_cuota_global_mes(self, periodo_str, tipo_cuota='UDVD'):
-        """Consulta de cuota mensual total de la empresa (ruta_id IS NULL)"""
+        """Consulta de cuota mensual total de la empresa; para UDVD incluye Amigo + Celta."""
+        if tipo_cuota.upper() == 'UDVD':
+            return self._obtener_total_udvd_periodo(periodo_str, ruta_id=None, campo='meta')
+
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
         cursor.execute("""
@@ -155,7 +188,10 @@ class ReportesRepository:
         return float(row_sum[0]) if row_sum and row_sum[0] else 0.0
 
     def obtener_cuota_individual(self, periodo_str, ruta_id, tipo_cuota='UDVD'):
-        """Consulta de cuota individual asignada a un vendedor"""
+        """Consulta de cuota individual; para UDVD incluye Amigo + Celta."""
+        if tipo_cuota.upper() == 'UDVD':
+            return self._obtener_total_udvd_periodo(periodo_str, ruta_id=ruta_id, campo='meta')
+
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
         cursor.execute("""
@@ -188,7 +224,27 @@ class ReportesRepository:
             """
             [FIX DISTINCT] Suma las cuotas del mes para las rutas bajo responsabilidad del supervisor,
             evitando duplicaciones si hay múltiples registros de usuarios por ruta.
+            Para UDVD incluye grupo Amigo y Celta en el mismo KPI.
             """
+            if tipo_cuota.upper() == 'UDVD':
+                conexion = self.db.obtener_conexion()
+                cursor = conexion.cursor()
+                cursor.execute("""
+                    SELECT COALESCE(SUM(meta_udvd), 0.0)
+                         + COALESCE(SUM(meta_amigo), 0.0)
+                         + COALESCE(SUM(meta_celta), 0.0)
+                    FROM operaciones_diarias
+                    WHERE fecha LIKE ?
+                      AND ruta_id IN (
+                          SELECT DISTINCT ruta
+                          FROM usuarios
+                          WHERE bajo_responsabilidad_supervisor = 1 AND ruta IS NOT NULL
+                      )
+                """, (f"{periodo_str}%",))
+                resultado = cursor.fetchone()[0]
+                conexion.close()
+                return float(resultado) if resultado else 0.0
+
             conexion = self.db.obtener_conexion()
             cursor = conexion.cursor()
             cursor.execute("""
@@ -211,39 +267,43 @@ class ReportesRepository:
     # ========================================================
 
     def obtener_progreso_global_mes(self, periodo_str, tipo_cuota='UDVD'):
-        """Progreso mensual: Cuota total, cuánto lleva acumulado y cuánto falta"""
+        """Progreso mensual: Cuota total, cuánto lleva acumulado y cuánto falta."""
         cuota_total = self.obtener_cuota_global_mes(periodo_str, tipo_cuota)
-        
-        conexion = self.db.obtener_conexion()
-        cursor = conexion.cursor()
-        campo_real = "real_udvd" if tipo_cuota.upper() == "UDVD" else "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones" 
-        
-        cursor.execute(f"SELECT SUM({campo_real}) FROM operaciones_diarias WHERE fecha LIKE ?", (f"{periodo_str}%",))
-        acumulado = cursor.fetchone()[0]
-        conexion.close()
-        
-        acumulado = acumulado if acumulado else 0.0
+
+        if tipo_cuota.upper() == 'UDVD':
+            acumulado = self._obtener_total_udvd_periodo(periodo_str, ruta_id=None, campo='real')
+        else:
+            conexion = self.db.obtener_conexion()
+            cursor = conexion.cursor()
+            campo_real = "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones"
+            cursor.execute(f"SELECT SUM({campo_real}) FROM operaciones_diarias WHERE fecha LIKE ?", (f"{periodo_str}%",))
+            acumulado = cursor.fetchone()[0]
+            conexion.close()
+            acumulado = acumulado if acumulado else 0.0
+
         falta = max(0.0, cuota_total - acumulado)
         porcentaje = (acumulado / cuota_total * 100) if cuota_total > 0 else 0.0
-        
+
         return {"cuota_total": cuota_total, "acumulado": acumulado, "falta": falta, "porcentaje": porcentaje}
 
     def obtener_progreso_individual(self, periodo_str, ruta_id, tipo_cuota='UDVD'):
-        """Progreso individual por vendedor: Cuota, acumulado y cuánto le falta"""
+        """Progreso individual por vendedor: Cuota, acumulado y cuánto le falta."""
         cuota_vendedor = self.obtener_cuota_individual(periodo_str, ruta_id, tipo_cuota)
-        
-        conexion = self.db.obtener_conexion()
-        cursor = conexion.cursor()
-        campo_real = "real_udvd" if tipo_cuota.upper() == "UDVD" else "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones"
-        
-        cursor.execute(f"SELECT SUM({campo_real}) FROM operaciones_diarias WHERE fecha LIKE ? AND ruta_id = ?", (f"{periodo_str}%", ruta_id))
-        acumulado = cursor.fetchone()[0]
-        conexion.close()
-        
-        acumulado = acumulado if acumulado else 0.0
+
+        if tipo_cuota.upper() == 'UDVD':
+            acumulado = self._obtener_total_udvd_periodo(periodo_str, ruta_id=ruta_id, campo='real')
+        else:
+            conexion = self.db.obtener_conexion()
+            cursor = conexion.cursor()
+            campo_real = "real_cxc" if tipo_cuota.upper() == "COBRANZA" else "real_activaciones"
+            cursor.execute(f"SELECT SUM({campo_real}) FROM operaciones_diarias WHERE fecha LIKE ? AND ruta_id = ?", (f"{periodo_str}%", ruta_id))
+            acumulado = cursor.fetchone()[0]
+            conexion.close()
+            acumulado = acumulado if acumulado else 0.0
+
         falta = max(0.0, cuota_vendedor - acumulado)
         porcentaje = (acumulado / cuota_vendedor * 100) if cuota_vendedor > 0 else 0.0
-        
+
         return {"cuota_individual": cuota_vendedor, "acumulado": acumulado, "falta": falta, "porcentaje": porcentaje}
 
     def obtener_total_metas_dia(self, fecha_str):
@@ -738,10 +798,11 @@ class ReportesRepository:
         conexion = self.db.obtener_conexion()
         cursor = conexion.cursor()
 
-        # Sumatoria de logros reales en el mes filtrados por la condición del supervisor
+        # Sumatoria de logros reales en el mes filtrados por la condición del supervisor.
+        # Para UDVD el indicador consolidado debe incluir Grupo Amigo + Celta.
         cursor.execute("""
             SELECT 
-                SUM(o.real_udvd), 
+                SUM(o.real_udvd + o.real_amigo + o.real_celta),
                 SUM(o.real_cxc), 
                 SUM(o.efectivo_usd), 
                 SUM(o.zelle_usd), 
