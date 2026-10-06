@@ -1253,7 +1253,7 @@ async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFA
             "3. Visitas planeadas\n\n"
             "4. Unidades Grupo Amigo planeadas\n"
             "5. Unidades Celta planeadas\n"
-            "💡 *Ejemplo:* `150 - 2500 - 12` o `150_2500_12`"
+            "💡 *Ejemplo:* `150 - 2500 - 12 - 20000 - 200` o `150_2500_12_3330_2220`"
         )
     elif tipo_reporte == SupervisorKeyboards.TIPO_CIERRE_NOCHE:
         instrucciones = (
@@ -1264,7 +1264,7 @@ async def pedir_datos_reporte_handler(update: Update, context: ContextTypes.DEFA
             "3. Visitas conseguidas\n\n"
             "4. Unidades Grupo Amigo conseguidas\n"
             "5. Unidades Celta conseguidas\n"
-            "💡 *Ejemplo:* `140 - 2300,50 - 10` o `140 / 2300.50 / 10`"
+            "💡 *Ejemplo:* `140 - 2300,50 - 10 - 2000 - 200` o `140 / 2300.50 / 10 / 2000 / 200`"
         )
     elif tipo_reporte == SupervisorKeyboards.TIPO_COBRANZA:
         instrucciones = (
