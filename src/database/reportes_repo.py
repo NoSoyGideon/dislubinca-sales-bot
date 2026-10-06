@@ -700,7 +700,11 @@ class ReportesRepository:
         cursor = conexion.cursor()
 
         # 1. Traer lista de rutas autorizadas aplicando el filtro de supervisor
-        query_rutas = "SELECT ruta, nombre_telegram FROM usuarios WHERE estado = 'AUTORIZADO'"
+        query_rutas = """
+            SELECT ruta, nombre_telegram
+            FROM usuarios
+            WHERE ruta IN (10, 15, 17, 21, 26, 30, 32, 39)
+        """
         if not incluir_todas_rutas:
             query_rutas += " AND bajo_responsabilidad_supervisor = 1"
         query_rutas += " ORDER BY ruta ASC"
